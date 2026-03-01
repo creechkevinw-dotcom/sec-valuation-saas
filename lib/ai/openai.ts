@@ -20,8 +20,54 @@ export type AiCompanyAnalysis = z.infer<typeof aiResponseSchema>;
 
 const OPENAI_URL = "https://api.openai.com/v1/responses";
 const MODEL = "gpt-4.1-mini";
+const ANALYSIS_JSON_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: [
+    "conviction",
+    "conviction_reasoning",
+    "profitability_summary",
+    "growth_summary",
+    "cash_flow_summary",
+    "balance_sheet_summary",
+    "liquidity_summary",
+    "risks",
+    "strengths",
+    "what_would_change_view",
+    "trade_scenarios",
+    "missing_data",
+    "disclaimer",
+  ],
+  properties: {
+    conviction: { type: "string", enum: ["low", "medium", "high"] },
+    conviction_reasoning: { type: "array", items: { type: "string" } },
+    profitability_summary: { type: "string" },
+    growth_summary: { type: "string" },
+    cash_flow_summary: { type: "string" },
+    balance_sheet_summary: { type: "string" },
+    liquidity_summary: { type: "string" },
+    risks: { type: "array", items: { type: "string" } },
+    strengths: { type: "array", items: { type: "string" } },
+    what_would_change_view: { type: "array", items: { type: "string" } },
+    trade_scenarios: { type: "array", items: { type: "string" } },
+    missing_data: { type: "array", items: { type: "string" } },
+    disclaimer: { type: "string" },
+  },
+} as const;
 
 function parseJsonObject(text: string): unknown {
+  const trimmed = text.trim();
+  try {
+    return JSON.parse(trimmed);
+  } catch {
+    // continue to extraction fallbacks
+  }
+
+  const fencedMatch = trimmed.match(/```json\s*([\s\S]*?)\s*```/i);
+  if (fencedMatch?.[1]) {
+    return JSON.parse(fencedMatch[1]);
+  }
+
   const start = text.indexOf("{");
   const end = text.lastIndexOf("}");
   if (start === -1 || end === -1 || end <= start) {
@@ -170,6 +216,14 @@ export async function analyzeCompanyData(input: {
             { role: "user", content: [{ type: "input_text", text: userPrompt }] },
           ],
           max_output_tokens: 900,
+          text: {
+            format: {
+              type: "json_schema",
+              name: "company_analysis",
+              schema: ANALYSIS_JSON_SCHEMA,
+              strict: true,
+            },
+          },
         },
       });
 
