@@ -60,13 +60,46 @@ async function callOpenAi({
 
     const json = (await res.json()) as {
       output_text?: string;
+      output?: Array<{
+        type?: string;
+        content?: Array<{ type?: string; text?: string }>;
+      }>;
+      content?: Array<{ type?: string; text?: string }>;
+      choices?: Array<{ message?: { content?: string } }>;
     };
 
-    if (!json.output_text) {
-      throw new Error("OpenAI response missing output_text");
+    if (json.output_text && typeof json.output_text === "string") {
+      return json.output_text;
     }
 
-    return json.output_text;
+    if (Array.isArray(json.output)) {
+      const chunks = json.output.flatMap((item) =>
+        Array.isArray(item.content)
+          ? item.content
+              .map((c) => (typeof c.text === "string" ? c.text : ""))
+              .filter((t) => t.length > 0)
+          : [],
+      );
+      if (chunks.length > 0) {
+        return chunks.join("\n");
+      }
+    }
+
+    if (Array.isArray(json.content)) {
+      const chunks = json.content
+        .map((c) => (typeof c.text === "string" ? c.text : ""))
+        .filter((t) => t.length > 0);
+      if (chunks.length > 0) {
+        return chunks.join("\n");
+      }
+    }
+
+    const choiceText = json.choices?.[0]?.message?.content;
+    if (choiceText && typeof choiceText === "string") {
+      return choiceText;
+    }
+
+    throw new Error("OpenAI response contained no parseable text payload");
   } finally {
     clearTimeout(timer);
   }
