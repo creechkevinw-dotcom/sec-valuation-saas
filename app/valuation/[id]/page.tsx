@@ -5,6 +5,7 @@ import { ValuationSummary } from "@/components/valuation-summary";
 import { SensitivityTable } from "@/components/sensitivity-table";
 import { FinancialHistoryChart } from "@/components/financial-history-chart";
 import { FilingsPanel } from "@/components/filings-panel";
+import { AiAnalysisPanel } from "@/components/ai-analysis-panel";
 
 export const dynamic = "force-dynamic";
 
@@ -94,6 +95,7 @@ export default async function ValuationDetailPage({
         recent={report.filings?.recent10k10q ?? []}
         quality={report.dataQuality ?? { historyYears: 0, has10K: false, has10Q: false, score: 0 }}
       />
+      <AiAnalysisPanel valuationId={id} />
       <FinancialHistoryChart rows={report.history} />
       <SensitivityTable rows={report.dcf.sensitivity} />
     </main>

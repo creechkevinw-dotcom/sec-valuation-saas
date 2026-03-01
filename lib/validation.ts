@@ -9,3 +9,18 @@ export const tickerSchema = z.object({
     .max(10)
     .regex(/^[A-Z.\-]+$/, "Ticker must be uppercase letters, dot, or dash"),
 });
+
+export const analyzeCompanySchema = z.object({
+  valuationId: z.string().uuid(),
+  forceRefresh: z.boolean().optional().default(false),
+});
+
+export const watchlistMutationSchema = z.object({
+  ticker: z
+    .string()
+    .trim()
+    .toUpperCase()
+    .min(1)
+    .max(10)
+    .regex(/^[A-Z.\-]+$/, "Ticker must be uppercase letters, dot, or dash"),
+});

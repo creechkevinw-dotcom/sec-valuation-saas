@@ -81,3 +81,19 @@ export type ValuationReport = {
   };
   generatedAt: string;
 };
+
+export type AiCompanyAnalysis = {
+  conviction: "low" | "medium" | "high";
+  conviction_reasoning: string[];
+  profitability_summary: string;
+  growth_summary: string;
+  cash_flow_summary: string;
+  balance_sheet_summary: string;
+  liquidity_summary: string;
+  risks: string[];
+  strengths: string[];
+  what_would_change_view: string[];
+  trade_scenarios: string[];
+  missing_data: string[];
+  disclaimer: string;
+};

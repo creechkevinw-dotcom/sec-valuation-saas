@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { TickerInputForm } from "@/components/ticker-input-form";
 import { EmptyState } from "@/components/empty-state";
 import { UpgradeBanner } from "@/components/upgrade-banner";
+import { WatchlistPanel } from "@/components/watchlist-panel";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
@@ -60,6 +61,7 @@ export default async function DashboardPage() {
               {profile?.plan === "pro" ? `${used} used` : `${used} / 3`}
             </p>
           </div>
+          <WatchlistPanel />
           <UpgradeBanner remaining={remaining} />
         </div>
 
