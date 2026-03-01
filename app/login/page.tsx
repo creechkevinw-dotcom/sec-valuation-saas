@@ -9,6 +9,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [mode, setMode] = useState<"signin" | "signup">("signin");
 
@@ -16,19 +17,30 @@ export default function LoginPage() {
     event.preventDefault();
     setLoading(true);
     setError(null);
+    setNotice(null);
     const supabase = createClient();
 
     if (mode === "signin") {
-      const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+      const { data, error: signInError } = await supabase.auth.signInWithPassword({ email, password });
       if (signInError) {
         setError(signInError.message);
         setLoading(false);
         return;
       }
+      if (!data.session) {
+        setNotice("Sign-in initiated. If email confirmation is enabled, verify your email then sign in again.");
+        setLoading(false);
+        return;
+      }
     } else {
-      const { error: signUpError } = await supabase.auth.signUp({ email, password });
+      const { data, error: signUpError } = await supabase.auth.signUp({ email, password });
       if (signUpError) {
         setError(signUpError.message);
+        setLoading(false);
+        return;
+      }
+      if (!data.session) {
+        setNotice("Account created. Check your email to confirm, then click Sign In.");
         setLoading(false);
         return;
       }
@@ -65,6 +77,7 @@ export default function LoginPage() {
           />
         </div>
         {error ? <p className="text-sm text-rose-600">{error}</p> : null}
+        {notice ? <p className="text-sm text-emerald-700">{notice}</p> : null}
         <div className="grid grid-cols-2 gap-2">
           <button
             type="submit"

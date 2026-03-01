@@ -3,6 +3,7 @@ import { TickerInputForm } from "@/components/ticker-input-form";
 import { EmptyState } from "@/components/empty-state";
 import { UpgradeBanner } from "@/components/upgrade-banner";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +14,7 @@ export default async function DashboardPage() {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    return <EmptyState title="Unauthorized" body="Please sign in to access dashboard." />;
+    redirect("/login");
   }
 
   const now = new Date();
