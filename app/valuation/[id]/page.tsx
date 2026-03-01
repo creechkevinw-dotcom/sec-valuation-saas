@@ -8,6 +8,7 @@ import { FilingsPanel } from "@/components/filings-panel";
 import { AiAnalysisPanel } from "@/components/ai-analysis-panel";
 import { AppNavTabs } from "@/components/app-nav-tabs";
 import { WatchlistSaveButton } from "@/components/watchlist-save-button";
+import { TradeRecommendationPanel } from "@/components/trade-recommendation-panel";
 
 export const dynamic = "force-dynamic";
 
@@ -99,6 +100,7 @@ export default async function ValuationDetailPage({
         bull={Number(data.fair_value_bull)}
         bear={Number(data.fair_value_bear)}
       />
+      <TradeRecommendationPanel ticker={report.ticker ?? data.ticker} />
       <ScoreCard score={data.health_score} />
       <AiAnalysisPanel valuationId={id} />
       <FilingsPanel

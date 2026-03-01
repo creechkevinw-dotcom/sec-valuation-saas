@@ -16,11 +16,13 @@ To keep your work in VS Code minimal, provide these once and I can do the rest o
 3. `SUPABASE_SERVICE_ROLE_KEY`
 4. `SEC_USER_AGENT` in SEC-required format, for example:
    - `sec-valuation-saas/1.0 your-email@domain.com`
-5. Stripe (optional for MVP hook now, required before paid launch):
+5. `OPENAI_API_KEY` (required for AI analysis)
+6. `FINNHUB_API_KEY` (required for live market, technicals, options, and trade recommendation engine)
+7. Stripe (optional for MVP hook now, required before paid launch):
    - `STRIPE_SECRET_KEY`
    - `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`
    - `STRIPE_WEBHOOK_SECRET`
-6. Deployment targets:
+8. Deployment targets:
    - Supabase project ref + org
    - Vercel team/project (or permission to create)
    - GitHub repo URL to push this code
@@ -37,7 +39,12 @@ To keep your work in VS Code minimal, provide these once and I can do the rest o
 3. Vercel
    - Add all environment variables
    - Deploy from GitHub repo
-4. Stripe (optional in this MVP phase)
+4. OpenAI API
+   - Add `OPENAI_API_KEY`
+5. Finnhub API
+   - Add `FINNHUB_API_KEY`
+   - Used by: live market snapshots, technical indicators, options chain, earnings, trade recommendations
+6. Stripe (optional in this MVP phase)
    - Create products/prices for `pro`
    - Configure webhook endpoint
 
@@ -66,6 +73,8 @@ npm run build
 1. Create Supabase project.
 2. In SQL editor, run:
    - `supabase/migrations/001_init.sql`
+   - `supabase/migrations/002_ai_watchlist.sql`
+   - `supabase/migrations/003_trade_recommendations.sql`
 3. In Storage, create private bucket `reports`.
 4. In Auth, ensure email auth is enabled.
 5. Copy API keys from Project Settings -> API.
@@ -80,6 +89,8 @@ npm run build
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
    - `SUPABASE_SERVICE_ROLE_KEY`
    - `SEC_USER_AGENT`
+   - `OPENAI_API_KEY`
+   - `FINNHUB_API_KEY`
    - Stripe vars (if enabled)
 4. Deploy.
 5. Smoke test:
@@ -100,6 +111,8 @@ SUPABASE_URL=
 SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
 SEC_USER_AGENT=
+OPENAI_API_KEY=
+FINNHUB_API_KEY=
 VERCEL_PROJECT_NAME=
 VERCEL_TEAM=
 GITHUB_REPO_URL=

@@ -21,6 +21,7 @@ export default async function SettingsPage() {
     .maybeSingle();
 
   const openAiConfigured = Boolean(process.env.OPENAI_API_KEY);
+  const finnhubConfigured = Boolean(process.env.FINNHUB_API_KEY);
   const newsEnabled = process.env.NEWS_ENABLED === "true";
 
   return (
@@ -59,6 +60,12 @@ export default async function SettingsPage() {
             <span className="text-slate-700">OpenAI analysis API</span>
             <span className={openAiConfigured ? "font-semibold text-emerald-700" : "font-semibold text-rose-700"}>
               {openAiConfigured ? "Configured" : "Not configured"}
+            </span>
+          </li>
+          <li className="flex items-center justify-between rounded-md border border-slate-200 px-3 py-2">
+            <span className="text-slate-700">Live market and options API (Finnhub)</span>
+            <span className={finnhubConfigured ? "font-semibold text-emerald-700" : "font-semibold text-rose-700"}>
+              {finnhubConfigured ? "Configured" : "Not configured"}
             </span>
           </li>
           <li className="flex items-center justify-between rounded-md border border-slate-200 px-3 py-2">
