@@ -35,27 +35,31 @@ export default async function ValuationDetailPage({
     return <EmptyState title="Report not found" body="This valuation is unavailable." />;
   }
 
+  if (!data.report_json || typeof data.report_json !== "object") {
+    return <EmptyState title="Report unavailable" body="Stored valuation payload is invalid." />;
+  }
+
   const report = data.report_json as {
-    companyName: string;
-    ticker: string;
-    history: Array<{ year: number; revenue: number; fcf: number }>;
-    dcf: { sensitivity: Array<{ wacc: number; terminalGrowth: number; fairValuePerShare: number }> };
-    filings: {
-      latest10K: {
+    companyName?: string;
+    ticker?: string;
+    history?: Array<{ year: number; revenue: number; fcf: number }>;
+    dcf?: { sensitivity?: Array<{ wacc: number; terminalGrowth: number; fairValuePerShare: number }> };
+    filings?: {
+      latest10K?: {
         form: string;
         filingDate: string;
         reportDate?: string | null;
         primaryDocDescription?: string;
         documentUrl: string;
       } | null;
-      latest10Q: {
+      latest10Q?: {
         form: string;
         filingDate: string;
         reportDate?: string | null;
         primaryDocDescription?: string;
         documentUrl: string;
       } | null;
-      recent10k10q: Array<{
+      recent10k10q?: Array<{
         form: string;
         filingDate: string;
         reportDate?: string | null;
@@ -63,7 +67,7 @@ export default async function ValuationDetailPage({
         documentUrl: string;
       }>;
     };
-    dataQuality: { historyYears: number; has10K: boolean; has10Q: boolean; score: number };
+    dataQuality?: { historyYears: number; has10K: boolean; has10Q: boolean; score: number };
   };
 
   return (
@@ -72,7 +76,7 @@ export default async function ValuationDetailPage({
         <div>
           <p className="text-sm text-slate-500">Valuation Report</p>
           <h1 className="text-3xl font-semibold text-slate-900">
-            {report.companyName} ({report.ticker})
+            {report.companyName ?? data.ticker} ({report.ticker ?? data.ticker})
           </h1>
         </div>
         <a
@@ -96,8 +100,8 @@ export default async function ValuationDetailPage({
         quality={report.dataQuality ?? { historyYears: 0, has10K: false, has10Q: false, score: 0 }}
       />
       <AiAnalysisPanel valuationId={id} />
-      <FinancialHistoryChart rows={report.history} />
-      <SensitivityTable rows={report.dcf.sensitivity} />
+      <FinancialHistoryChart rows={report.history ?? []} />
+      <SensitivityTable rows={report.dcf?.sensitivity ?? []} />
     </main>
   );
 }
