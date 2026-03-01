@@ -53,7 +53,7 @@ async function fetchJson<T>(url: string): Promise<T> {
 export async function resolveTicker(ticker: string) {
   const normalized = ticker.trim().toUpperCase();
   const map = await fetchJson<Record<string, SecCompanyTicker>>(
-    `${SEC_BASE_URL}/files/company_tickers.json`,
+    "https://www.sec.gov/files/company_tickers.json",
   );
 
   const match = Object.values(map).find((entry) => entry.ticker === normalized);
