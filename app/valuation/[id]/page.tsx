@@ -4,6 +4,7 @@ import { ScoreCard } from "@/components/score-card";
 import { ValuationSummary } from "@/components/valuation-summary";
 import { SensitivityTable } from "@/components/sensitivity-table";
 import { FinancialHistoryChart } from "@/components/financial-history-chart";
+import { FilingsPanel } from "@/components/filings-panel";
 
 export const dynamic = "force-dynamic";
 
@@ -38,6 +39,30 @@ export default async function ValuationDetailPage({
     ticker: string;
     history: Array<{ year: number; revenue: number; fcf: number }>;
     dcf: { sensitivity: Array<{ wacc: number; terminalGrowth: number; fairValuePerShare: number }> };
+    filings: {
+      latest10K: {
+        form: string;
+        filingDate: string;
+        reportDate?: string | null;
+        primaryDocDescription?: string;
+        documentUrl: string;
+      } | null;
+      latest10Q: {
+        form: string;
+        filingDate: string;
+        reportDate?: string | null;
+        primaryDocDescription?: string;
+        documentUrl: string;
+      } | null;
+      recent10k10q: Array<{
+        form: string;
+        filingDate: string;
+        reportDate?: string | null;
+        primaryDocDescription?: string;
+        documentUrl: string;
+      }>;
+    };
+    dataQuality: { historyYears: number; has10K: boolean; has10Q: boolean; score: number };
   };
 
   return (
@@ -62,6 +87,12 @@ export default async function ValuationDetailPage({
         base={Number(data.fair_value_base)}
         bull={Number(data.fair_value_bull)}
         bear={Number(data.fair_value_bear)}
+      />
+      <FilingsPanel
+        latest10K={report.filings?.latest10K ?? null}
+        latest10Q={report.filings?.latest10Q ?? null}
+        recent={report.filings?.recent10k10q ?? []}
+        quality={report.dataQuality ?? { historyYears: 0, has10K: false, has10Q: false, score: 0 }}
       />
       <FinancialHistoryChart rows={report.history} />
       <SensitivityTable rows={report.dcf.sensitivity} />

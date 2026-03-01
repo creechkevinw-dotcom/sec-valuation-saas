@@ -43,6 +43,17 @@ export type SensitivityCell = {
   fairValuePerShare: number;
 };
 
+export type FilingDocument = {
+  form: string;
+  accessionNumber: string;
+  filingDate: string;
+  reportDate?: string | null;
+  primaryDocument: string;
+  primaryDocDescription?: string;
+  documentUrl: string;
+  filingFolderUrl: string;
+};
+
 export type ValuationReport = {
   ticker: string;
   cik: string;
@@ -56,6 +67,17 @@ export type ValuationReport = {
     bull: DcfScenarioResult;
     bear: DcfScenarioResult;
     sensitivity: SensitivityCell[];
+  };
+  filings: {
+    latest10K: FilingDocument | null;
+    latest10Q: FilingDocument | null;
+    recent10k10q: FilingDocument[];
+  };
+  dataQuality: {
+    historyYears: number;
+    has10K: boolean;
+    has10Q: boolean;
+    score: number;
   };
   generatedAt: string;
 };
