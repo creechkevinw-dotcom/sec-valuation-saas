@@ -1,15 +1,16 @@
 "use client";
 
 import type { AiCompanyAnalysis } from "@/types/valuation";
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 export function AiAnalysisPanel({ valuationId }: { valuationId: string }) {
   const [analysis, setAnalysis] = useState<AiCompanyAnalysis | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [cached, setCached] = useState<boolean | null>(null);
+  const didAutoRun = useRef(false);
 
-  async function runAnalysis(forceRefresh = false) {
+  const runAnalysis = useCallback(async (forceRefresh = false) => {
     setLoading(true);
     setError(null);
     try {
@@ -21,7 +22,7 @@ export function AiAnalysisPanel({ valuationId }: { valuationId: string }) {
       const payload = await res.json();
 
       if (!res.ok) {
-        setError(payload.error ?? "Failed to generate AI analysis.");
+        setError(payload.error ?? payload.message ?? "Failed to generate AI analysis.");
         return;
       }
 
@@ -32,7 +33,15 @@ export function AiAnalysisPanel({ valuationId }: { valuationId: string }) {
     } finally {
       setLoading(false);
     }
-  }
+  }, [valuationId]);
+
+  useEffect(() => {
+    if (didAutoRun.current) {
+      return;
+    }
+    didAutoRun.current = true;
+    void runAnalysis(false);
+  }, [runAnalysis]);
 
   return (
     <section className="space-y-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -45,7 +54,7 @@ export function AiAnalysisPanel({ valuationId }: { valuationId: string }) {
             disabled={loading}
             className="rounded-md bg-slate-900 px-3 py-2 text-xs font-semibold text-white disabled:opacity-60"
           >
-            {loading ? "Analyzing..." : "Generate"}
+            {loading ? "Analyzing..." : "Regenerate"}
           </button>
           <button
             type="button"

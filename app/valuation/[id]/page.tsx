@@ -88,6 +88,7 @@ export default async function ValuationDetailPage({
       </header>
 
       <ScoreCard score={data.health_score} />
+      <AiAnalysisPanel valuationId={id} />
       <ValuationSummary
         base={Number(data.fair_value_base)}
         bull={Number(data.fair_value_bull)}
@@ -99,7 +100,6 @@ export default async function ValuationDetailPage({
         recent={report.filings?.recent10k10q ?? []}
         quality={report.dataQuality ?? { historyYears: 0, has10K: false, has10Q: false, score: 0 }}
       />
-      <AiAnalysisPanel valuationId={id} />
       <FinancialHistoryChart rows={report.history ?? []} />
       <SensitivityTable rows={report.dcf?.sensitivity ?? []} />
     </main>

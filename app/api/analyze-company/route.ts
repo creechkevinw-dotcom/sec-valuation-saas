@@ -48,6 +48,13 @@ export async function POST(request: Request) {
       cik: string;
     };
 
+    if (!report?.ticker || !report?.companyName || !report?.cik) {
+      return NextResponse.json(
+        { error: "Valuation report is missing required fields for AI analysis" },
+        { status: 422 },
+      );
+    }
+
     const news = await getNewsForTicker(report.ticker);
 
     const analysis = await analyzeCompanyData({
@@ -74,6 +81,16 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     console.error("POST /api/analyze-company error", error);
-    return NextResponse.json({ error: "AI analysis failed" }, { status: 500 });
+    const message = error instanceof Error ? error.message : "AI analysis failed";
+    if (message.includes("Missing OPENAI_API_KEY")) {
+      return NextResponse.json({ error: "OPENAI_API_KEY is not configured" }, { status: 503 });
+    }
+    if (message.includes("OpenAI API 401")) {
+      return NextResponse.json({ error: "OpenAI authentication failed: invalid API key" }, { status: 502 });
+    }
+    if (message.includes("OpenAI API 429")) {
+      return NextResponse.json({ error: "OpenAI rate limit exceeded. Retry shortly." }, { status: 429 });
+    }
+    return NextResponse.json({ error: message || "AI analysis failed" }, { status: 500 });
   }
 }
