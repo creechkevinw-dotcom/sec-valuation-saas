@@ -6,6 +6,7 @@ import { SensitivityTable } from "@/components/sensitivity-table";
 import { FinancialHistoryChart } from "@/components/financial-history-chart";
 import { FilingsPanel } from "@/components/filings-panel";
 import { AiAnalysisPanel } from "@/components/ai-analysis-panel";
+import { AppNavTabs } from "@/components/app-nav-tabs";
 
 export const dynamic = "force-dynamic";
 
@@ -72,6 +73,8 @@ export default async function ValuationDetailPage({
 
   return (
     <main className="mx-auto min-h-screen max-w-6xl space-y-6 px-6 py-10">
+      <AppNavTabs />
+
       <header className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <p className="text-sm text-slate-500">Valuation Report</p>

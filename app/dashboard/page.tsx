@@ -3,6 +3,7 @@ import { TickerInputForm } from "@/components/ticker-input-form";
 import { EmptyState } from "@/components/empty-state";
 import { UpgradeBanner } from "@/components/upgrade-banner";
 import { WatchlistPanel } from "@/components/watchlist-panel";
+import { AppNavTabs } from "@/components/app-nav-tabs";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
@@ -42,6 +43,10 @@ export default async function DashboardPage() {
 
   return (
     <main className="mx-auto min-h-screen max-w-6xl px-6 py-10">
+      <div className="mb-6">
+        <AppNavTabs />
+      </div>
+
       <header className="mb-8 flex flex-wrap items-center justify-between gap-4">
         <div>
           <p className="text-sm text-slate-500">Signed in as {profile?.email ?? user.email}</p>
