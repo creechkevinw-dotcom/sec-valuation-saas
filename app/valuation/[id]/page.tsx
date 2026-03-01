@@ -7,6 +7,7 @@ import { FinancialHistoryChart } from "@/components/financial-history-chart";
 import { FilingsPanel } from "@/components/filings-panel";
 import { AiAnalysisPanel } from "@/components/ai-analysis-panel";
 import { AppNavTabs } from "@/components/app-nav-tabs";
+import { WatchlistSaveButton } from "@/components/watchlist-save-button";
 
 export const dynamic = "force-dynamic";
 
@@ -82,21 +83,24 @@ export default async function ValuationDetailPage({
             {report.companyName ?? data.ticker} ({report.ticker ?? data.ticker})
           </h1>
         </div>
-        <a
-          href={`/api/valuation/${id}/pdf`}
-          className="rounded-md bg-slate-900 px-4 py-2 text-sm font-semibold text-white"
-        >
-          Download PDF
-        </a>
+        <div className="flex flex-wrap items-start gap-2">
+          <WatchlistSaveButton ticker={report.ticker ?? data.ticker} />
+          <a
+            href={`/api/valuation/${id}/pdf`}
+            className="rounded-md bg-slate-900 px-4 py-2 text-sm font-semibold text-white"
+          >
+            Download PDF
+          </a>
+        </div>
       </header>
 
-      <ScoreCard score={data.health_score} />
-      <AiAnalysisPanel valuationId={id} />
       <ValuationSummary
         base={Number(data.fair_value_base)}
         bull={Number(data.fair_value_bull)}
         bear={Number(data.fair_value_bear)}
       />
+      <ScoreCard score={data.health_score} />
+      <AiAnalysisPanel valuationId={id} />
       <FilingsPanel
         latest10K={report.filings?.latest10K ?? null}
         latest10Q={report.filings?.latest10Q ?? null}
