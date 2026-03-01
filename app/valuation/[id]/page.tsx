@@ -1,0 +1,70 @@
+import { createClient } from "@/lib/supabase/server";
+import { EmptyState } from "@/components/empty-state";
+import { ScoreCard } from "@/components/score-card";
+import { ValuationSummary } from "@/components/valuation-summary";
+import { SensitivityTable } from "@/components/sensitivity-table";
+import { FinancialHistoryChart } from "@/components/financial-history-chart";
+
+export const dynamic = "force-dynamic";
+
+export default async function ValuationDetailPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return <EmptyState title="Unauthorized" body="Please sign in." />;
+  }
+
+  const { data } = await supabase
+    .from("valuations")
+    .select("id,ticker,health_score,fair_value_base,fair_value_bull,fair_value_bear,report_json")
+    .eq("id", id)
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (!data?.report_json) {
+    return <EmptyState title="Report not found" body="This valuation is unavailable." />;
+  }
+
+  const report = data.report_json as {
+    companyName: string;
+    ticker: string;
+    history: Array<{ year: number; revenue: number; fcf: number }>;
+    dcf: { sensitivity: Array<{ wacc: number; terminalGrowth: number; fairValuePerShare: number }> };
+  };
+
+  return (
+    <main className="mx-auto min-h-screen max-w-6xl space-y-6 px-6 py-10">
+      <header className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <p className="text-sm text-slate-500">Valuation Report</p>
+          <h1 className="text-3xl font-semibold text-slate-900">
+            {report.companyName} ({report.ticker})
+          </h1>
+        </div>
+        <a
+          href={`/api/valuation/${id}/pdf`}
+          className="rounded-md bg-slate-900 px-4 py-2 text-sm font-semibold text-white"
+        >
+          Download PDF
+        </a>
+      </header>
+
+      <ScoreCard score={data.health_score} />
+      <ValuationSummary
+        base={Number(data.fair_value_base)}
+        bull={Number(data.fair_value_bull)}
+        bear={Number(data.fair_value_bear)}
+      />
+      <FinancialHistoryChart rows={report.history} />
+      <SensitivityTable rows={report.dcf.sensitivity} />
+    </main>
+  );
+}
