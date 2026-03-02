@@ -12,6 +12,7 @@ import { TradeRecommendationPanel } from "@/components/trade-recommendation-pane
 import { EnrichmentPanel } from "@/components/enrichment-panel";
 import { ConsensusSummaryCard } from "@/components/consensus-summary-card";
 import { SentimentCard } from "@/components/sentiment-card";
+import { MonteCarloCard } from "@/components/monte-carlo-card";
 
 export const dynamic = "force-dynamic";
 
@@ -49,7 +50,20 @@ export default async function ValuationDetailPage({
     companyName?: string;
     ticker?: string;
     history?: Array<{ year: number; revenue: number; fcf: number }>;
-    dcf?: { sensitivity?: Array<{ wacc: number; terminalGrowth: number; fairValuePerShare: number }> };
+    dcf?: {
+      sensitivity?: Array<{ wacc: number; terminalGrowth: number; fairValuePerShare: number }>;
+      monteCarlo?: {
+        iterations: number;
+        successRate: number;
+        p10: number;
+        p50: number;
+        p90: number;
+        mean: number;
+        min: number;
+        max: number;
+        histogram: Array<{ start: number; end: number; count: number }>;
+      };
+    };
     filings?: {
       latest10K?: {
         form: string;
@@ -177,6 +191,7 @@ export default async function ValuationDetailPage({
       <EnrichmentPanel enrichment={report.enrichment} />
       <FinancialHistoryChart rows={report.history ?? []} />
       <SensitivityTable rows={report.dcf?.sensitivity ?? []} />
+      <MonteCarloCard result={report.dcf?.monteCarlo} />
     </main>
   );
 }

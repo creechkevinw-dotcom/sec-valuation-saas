@@ -54,6 +54,24 @@ export type SensitivityCell = {
   fairValuePerShare: number;
 };
 
+export type MonteCarloBin = {
+  start: number;
+  end: number;
+  count: number;
+};
+
+export type MonteCarloResult = {
+  iterations: number;
+  successRate: number;
+  p10: number;
+  p50: number;
+  p90: number;
+  mean: number;
+  min: number;
+  max: number;
+  histogram: MonteCarloBin[];
+};
+
 export type FilingDocument = {
   form: string;
   accessionNumber: string;
@@ -78,6 +96,7 @@ export type ValuationReport = {
     bull: DcfScenarioResult;
     bear: DcfScenarioResult;
     sensitivity: SensitivityCell[];
+    monteCarlo?: MonteCarloResult;
   };
   filings: {
     latest10K: FilingDocument | null;

@@ -6,6 +6,7 @@ import { fetchLatestFilings } from "@/lib/sec-filings";
 import { projectFinancials } from "@/lib/projection";
 import { scoreFinancialHealth } from "@/lib/scoring";
 import { buildSensitivityTable, runDCF } from "@/lib/dcf";
+import { runMonteCarlo } from "@/lib/monte-carlo";
 import type { ValuationReport } from "@/types/valuation";
 
 function clamp(value: number, min = -999_999, max = 999_999) {
@@ -152,6 +153,17 @@ export async function buildValuationReport(ticker: string): Promise<ValuationRep
     dcf.base.terminalGrowth,
   );
 
+  const monteCarlo = runMonteCarlo({
+    projections,
+    cash: latest.cash,
+    debt: latest.totalDebt,
+    sharesOutstanding: latest.sharesOutstanding,
+    baseWacc: dcf.base.wacc,
+    baseTerminalGrowth: dcf.base.terminalGrowth,
+    iterations: 2500,
+    seed: `${resolved.ticker}-${resolved.cik}-${latest.year}`,
+  });
+
   return {
     ticker: resolved.ticker,
     cik: resolved.cik,
@@ -163,6 +175,7 @@ export async function buildValuationReport(ticker: string): Promise<ValuationRep
     dcf: {
       ...dcf,
       sensitivity,
+      monteCarlo,
     },
     filings,
     enrichment: {
