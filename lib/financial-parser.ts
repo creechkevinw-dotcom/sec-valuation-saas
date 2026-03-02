@@ -22,8 +22,9 @@ export function normalizeFinancials(facts: FactsPayload): FinancialYear[] {
   const netIncome = extractYearlySeries(facts, SEC_FIELDS.netIncome);
   const cfo = extractYearlySeries(facts, SEC_FIELDS.cfo);
   const capex = extractYearlySeries(facts, SEC_FIELDS.capex);
-  const debt = extractYearlySeries(facts, SEC_FIELDS.debt);
+  const longTermDebt = extractYearlySeries(facts, SEC_FIELDS.debt);
   const cash = extractYearlySeries(facts, SEC_FIELDS.cash);
+  const shortTermInvestments = extractYearlySeries(facts, SEC_FIELDS.shortTermInvestments);
   const shares = extractYearlySeries(facts, SEC_FIELDS.shares);
   const currentAssets = extractYearlySeries(facts, SEC_FIELDS.currentAssets);
   const currentLiabilities = extractYearlySeries(facts, SEC_FIELDS.currentLiabilities);
@@ -40,6 +41,12 @@ export function normalizeFinancials(facts: FactsPayload): FinancialYear[] {
     const operatingCashFlow = safeValue(cfo.get(year));
     const capexValue = Math.abs(safeValue(capex.get(year)));
     const sharesOutstanding = Math.max(1, safeValue(shares.get(year)));
+    const longDebt = Math.abs(safeValue(longTermDebt.get(year)));
+    const shortDebt = Math.abs(safeValue(shortTermDebt.get(year)));
+    const currentDebtMaturity = Math.abs(safeValue(currentLongTermDebt.get(year)));
+    const totalDebt = longDebt + shortDebt + currentDebtMaturity;
+    const cashAndInvestments =
+      safeValue(cash.get(year)) + Math.abs(safeValue(shortTermInvestments.get(year)));
     const equityValue = safeValue(shareholderEquity.get(year));
 
     return {
@@ -48,8 +55,8 @@ export function normalizeFinancials(facts: FactsPayload): FinancialYear[] {
       ebit: safeValue(ebit.get(year)),
       netIncome: safeValue(netIncome.get(year)),
       fcf: operatingCashFlow - capexValue,
-      totalDebt: safeValue(debt.get(year)),
-      cash: safeValue(cash.get(year)),
+      totalDebt,
+      cash: cashAndInvestments,
       sharesOutstanding,
       currentAssets: safeValue(currentAssets.get(year)),
       currentLiabilities: safeValue(currentLiabilities.get(year)),
