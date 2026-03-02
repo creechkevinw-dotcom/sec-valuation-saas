@@ -2,6 +2,7 @@ import { cacheGet, cacheSet } from "@/lib/trade/cache";
 import type { TechnicalSnapshot } from "@/lib/trade/types";
 
 const CACHE_TTL_MS = 5 * 60_000;
+const MIN_REQUIRED_POINTS = 120;
 
 type CandleResponse = {
   c: number[];
@@ -25,18 +26,39 @@ async function fetchCandles(ticker: string): Promise<CandleResponse> {
   const key = requireMarketApiKey();
   const to = Math.floor(Date.now() / 1000);
   const from = to - 550 * 24 * 60 * 60;
-  const res = await fetch(
-    `https://finnhub.io/api/v1/stock/candle?symbol=${ticker}&resolution=D&from=${from}&to=${to}&token=${key}`,
-    { cache: "no-store" },
-  );
-  if (!res.ok) {
-    throw new Error(`Technical provider error ${res.status}`);
+  let lastError: unknown;
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      const res = await fetch(
+        `https://finnhub.io/api/v1/stock/candle?symbol=${ticker}&resolution=D&from=${from}&to=${to}&token=${key}`,
+        { cache: "no-store" },
+      );
+
+      if (res.status === 429) {
+        throw new Error("TECHNICAL_RATE_LIMIT");
+      }
+      if (!res.ok) {
+        throw new Error(`TECHNICAL_PROVIDER_ERROR_${res.status}`);
+      }
+
+      const json = (await res.json()) as CandleResponse;
+      if (json.s === "ok") {
+        return json;
+      }
+      if (json.s === "no_data") {
+        throw new Error("TECHNICAL_NO_DATA");
+      }
+      throw new Error("TECHNICAL_DATA_UNAVAILABLE");
+    } catch (error) {
+      lastError = error;
+      if (attempt < 2) {
+        await new Promise((resolve) => setTimeout(resolve, 250 * (attempt + 1)));
+      }
+    }
   }
-  const json = (await res.json()) as CandleResponse;
-  if (json.s !== "ok") {
-    throw new Error("Technical data unavailable");
-  }
-  return json;
+
+  throw lastError instanceof Error ? lastError : new Error("TECHNICAL_PROVIDER_ERROR");
 }
 
 function sma(values: number[], period: number) {
@@ -99,25 +121,35 @@ export async function getTechnicalSnapshot(ticker: string): Promise<TechnicalSna
   const volume = candles.v;
   const ts = candles.t;
 
-  if (close.length < 250) {
-    throw new Error("Insufficient OHLCV points");
+  if (close.length < MIN_REQUIRED_POINTS) {
+    throw new Error(`TECHNICAL_INSUFFICIENT_HISTORY_${close.length}`);
   }
 
-  const sma20 = sma(close, 20);
-  const sma50 = sma(close, 50);
-  const sma200 = sma(close, 200);
-  const ema12 = ema(close, 12);
-  const ema26 = ema(close, 26);
+  const p20 = Math.min(20, close.length);
+  const p50 = Math.min(50, close.length);
+  const p200 = Math.min(200, close.length);
+  const e12 = Math.min(12, close.length);
+  const e26 = Math.min(26, close.length);
+  const r14 = Math.min(14, close.length - 1);
+  const a14 = Math.min(14, close.length - 1);
+
+  const sma20 = sma(close, p20);
+  const sma50 = sma(close, p50);
+  const sma200 = sma(close, p200);
+  const ema12 = ema(close, e12);
+  const ema26 = ema(close, e26);
   const macd = ema12 - ema26;
   const macdSignal = macd * 0.8;
-  const rsi14 = rsi(close, 14);
-  const atr14 = atr(high, low, close, 14);
+  const rsi14 = rsi(close, r14);
+  const atr14 = atr(high, low, close, a14);
   const bbMid = sma20;
-  const bbDev = stddev(close.slice(-20));
+  const bbDev = stddev(close.slice(-p20));
   const bbUpper = bbMid + 2 * bbDev;
   const bbLower = bbMid - 2 * bbDev;
-  const recentVol = sma(volume, 20);
-  const priorVol = sma(volume.slice(0, -20), 20);
+  const recentVol = sma(volume, p20);
+  const priorSlice = volume.slice(0, -p20);
+  const priorWindow = Math.min(p20, priorSlice.length);
+  const priorVol = priorWindow >= 5 ? sma(priorSlice, priorWindow) : recentVol;
   const volumeTrend = priorVol > 0 ? recentVol / priorVol : 1;
 
   const momentumScore = Math.max(

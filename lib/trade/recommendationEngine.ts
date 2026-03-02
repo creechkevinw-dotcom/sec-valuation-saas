@@ -109,7 +109,17 @@ export async function generateTradeRecommendation(params: {
   try {
     technical = await getTechnicalSnapshot(ticker);
   } catch (error) {
-    return refusal("INSUFFICIENT_DATA", "Technical data insufficient", { message: String(error) });
+    const message = error instanceof Error ? error.message : String(error);
+    if (message.includes("RATE_LIMIT")) {
+      return refusal("RATE_LIMIT", "Technical data provider rate limit reached", { message });
+    }
+    if (message.includes("PROVIDER_ERROR")) {
+      return refusal("PROVIDER_ERROR", "Technical data provider unavailable", { message });
+    }
+    if (message.includes("NO_DATA")) {
+      return refusal("INSUFFICIENT_DATA", "No technical candle data available for ticker", { message });
+    }
+    return refusal("INSUFFICIENT_DATA", "Technical data insufficient", { message });
   }
 
   let earnings;
