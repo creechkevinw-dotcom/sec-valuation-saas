@@ -125,6 +125,13 @@ export type ValuationReport = {
       notes?: string;
       forwardRevenueGrowthPct?: number;
       forwardEpsGrowthPct?: number;
+      analystCount?: number;
+      targetMean?: number;
+      targetHigh?: number;
+      targetLow?: number;
+      ratingConsensus?: string;
+      revisionTrend?: "up" | "down" | "flat";
+      updatedAt?: string;
     };
     governanceSignals: string[];
     deterministicMissingData: string[];
