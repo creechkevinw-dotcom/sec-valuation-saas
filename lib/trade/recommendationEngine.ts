@@ -18,7 +18,39 @@ function refusal(
   return { refused: true, reasonCode, reason, details };
 }
 
-async function getProfileFundamentals(ticker: string, supabase: AnyDb, userId: string): Promise<FundamentalSnapshot> {
+function parseStooqDailyDollarVolume(csv: string): number | null {
+  const lines = csv
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+
+  if (lines.length <= 1) return null;
+
+  const rows = lines
+    .slice(1)
+    .map((line) => line.split(","))
+    .map((cols) => {
+      const close = Number(cols[4]);
+      const volume = Number(cols[5]);
+      return Number.isFinite(close) && Number.isFinite(volume) && close > 0 && volume > 0
+        ? { close, volume }
+        : null;
+    })
+    .filter((row): row is { close: number; volume: number } => row !== null);
+
+  if (rows.length === 0) return null;
+  const n = Math.min(20, rows.length);
+  const sample = rows.slice(-n);
+  const sum = sample.reduce((acc, row) => acc + row.close * row.volume, 0);
+  return sum / n;
+}
+
+async function getProfileFundamentals(
+  ticker: string,
+  supabase: AnyDb,
+  userId: string,
+  marketFallbackDollarVolume: number,
+): Promise<FundamentalSnapshot> {
   const latestValuation = await supabase
     .from("valuations")
     .select("health_score,fair_value_base")
@@ -32,39 +64,67 @@ async function getProfileFundamentals(ticker: string, supabase: AnyDb, userId: s
   if (!key) {
     throw new Error("Missing FINNHUB_API_KEY");
   }
+
+  let marketCap: number | null = null;
+  let marketCapSource = "none";
   const profileRes = await fetch(`https://finnhub.io/api/v1/stock/profile2?symbol=${ticker}&token=${key}`, {
     cache: "no-store",
   });
-  if (!profileRes.ok) {
-    throw new Error("Fundamental provider error");
+  if (profileRes.ok) {
+    const profile = (await profileRes.json()) as { marketCapitalization?: number };
+    if (profile.marketCapitalization != null) {
+      marketCap = Number(profile.marketCapitalization) * 1_000_000;
+      marketCapSource = "finnhub";
+    }
   }
-  const profile = (await profileRes.json()) as { marketCapitalization?: number };
 
+  let avgDailyDollarVolume: number | null = null;
+  let volumeSource = "none";
   const candleRes = await fetch(
     `https://finnhub.io/api/v1/stock/candle?symbol=${ticker}&resolution=D&from=${Math.floor(Date.now() / 1000) - 90 * 86400}&to=${Math.floor(Date.now() / 1000)}&token=${key}`,
     { cache: "no-store" },
   );
-  if (!candleRes.ok) {
+  if (candleRes.ok) {
+    const candles = (await candleRes.json()) as { c?: number[]; v?: number[]; s?: string };
+    if (candles.s === "ok" && candles.c && candles.v && candles.c.length > 0) {
+      const n = Math.min(candles.c.length, 20);
+      let sum = 0;
+      for (let i = candles.c.length - n; i < candles.c.length; i += 1) {
+        sum += candles.c[i] * candles.v[i];
+      }
+      avgDailyDollarVolume = sum / n;
+      volumeSource = "finnhub";
+    }
+  }
+
+  if (avgDailyDollarVolume == null) {
+    const stooqRes = await fetch(`https://stooq.com/q/d/l/?s=${ticker.toLowerCase()}.us&i=d`, {
+      cache: "no-store",
+    });
+    if (stooqRes.ok) {
+      const parsed = parseStooqDailyDollarVolume(await stooqRes.text());
+      if (parsed != null) {
+        avgDailyDollarVolume = parsed;
+        volumeSource = "stooq";
+      }
+    }
+  }
+
+  if (avgDailyDollarVolume == null && marketFallbackDollarVolume > 0) {
+    avgDailyDollarVolume = marketFallbackDollarVolume;
+    volumeSource = "quote_fallback";
+  }
+
+  if (avgDailyDollarVolume == null) {
     throw new Error("Fundamental candle provider error");
   }
-  const candles = (await candleRes.json()) as { c?: number[]; v?: number[]; s?: string };
-  if (candles.s !== "ok" || !candles.c || !candles.v || candles.c.length === 0) {
-    throw new Error("Insufficient candles for liquidity");
-  }
-  const n = Math.min(candles.c.length, 20);
-  let sum = 0;
-  for (let i = candles.c.length - n; i < candles.c.length; i += 1) {
-    sum += candles.c[i] * candles.v[i];
-  }
-  const avgDailyDollarVolume = sum / n;
 
   return {
     healthScore: latestValuation.data?.health_score ?? 50,
     baseFairValue: latestValuation.data?.fair_value_base ? Number(latestValuation.data.fair_value_base) : null,
-    marketCap:
-      profile.marketCapitalization != null ? Number(profile.marketCapitalization) * 1_000_000 : null,
+    marketCap,
     avgDailyDollarVolume,
-    source: "finnhub+supabase",
+    source: `supabase+marketcap:${marketCapSource}+liquidity:${volumeSource}`,
   };
 }
 
@@ -152,7 +212,13 @@ export async function generateTradeRecommendation(params: {
 
   let fundamentals;
   try {
-    fundamentals = await getProfileFundamentals(ticker, params.supabase, params.userId);
+    const marketFallbackDollarVolume = market.price > 0 && market.volume > 0 ? market.price * market.volume : 0;
+    fundamentals = await getProfileFundamentals(
+      ticker,
+      params.supabase,
+      params.userId,
+      marketFallbackDollarVolume,
+    );
   } catch (error) {
     return refusal("PROVIDER_ERROR", "Fundamental snapshot unavailable", { message: String(error) });
   }
@@ -214,6 +280,9 @@ export async function generateTradeRecommendation(params: {
       "Liquidity risk",
       earnings.earningsRisk ? "Earnings event risk (<7 days)" : "No immediate earnings event",
       ...(optionsAvailable ? [] : ["Options chain unavailable: recommendation generated in equity-only mode"]),
+      ...(fundamentals.source.includes("quote_fallback")
+        ? ["Liquidity metrics used quote-derived fallback due candle provider limits"]
+        : []),
     ],
   };
 

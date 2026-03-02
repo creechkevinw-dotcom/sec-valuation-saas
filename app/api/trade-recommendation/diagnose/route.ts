@@ -35,12 +35,37 @@ export async function POST(request: Request) {
   }
 
   const ticker = parsed.data.ticker;
+  const key = process.env.FINNHUB_API_KEY;
 
-  const [market, technical, earnings, options] = await Promise.all([
+  const [market, technical, earnings, options, fundamentals] = await Promise.all([
     runStage(() => getMarketSnapshot(ticker), (v) => ({ ok: true, source: v.source, timestamp: v.lastTradeTimestamp })),
     runStage(() => getTechnicalSnapshot(ticker), (v) => ({ ok: true, source: v.source, points: v.points, timestamp: v.lastTimestamp })),
     runStage(() => getEarningsSnapshot(ticker), (v) => ({ ok: true, source: v.source, timestamp: v.nextEarningsDate ?? undefined })),
     runStage(() => getOptionsSnapshot(ticker), (v) => ({ ok: true, source: v.source, points: v.contracts.length })),
+    runStage(
+      async () => {
+        if (!key) {
+          throw new Error("Missing FINNHUB_API_KEY");
+        }
+        const [profileRes, candleRes, stooqRes] = await Promise.all([
+          fetch(`https://finnhub.io/api/v1/stock/profile2?symbol=${ticker}&token=${key}`, { cache: "no-store" }),
+          fetch(
+            `https://finnhub.io/api/v1/stock/candle?symbol=${ticker}&resolution=D&from=${Math.floor(Date.now() / 1000) - 90 * 86400}&to=${Math.floor(Date.now() / 1000)}&token=${key}`,
+            { cache: "no-store" },
+          ),
+          fetch(`https://stooq.com/q/d/l/?s=${ticker.toLowerCase()}.us&i=d`, { cache: "no-store" }),
+        ]);
+        return {
+          profileStatus: profileRes.status,
+          candleStatus: candleRes.status,
+          stooqStatus: stooqRes.status,
+        };
+      },
+      (v) => ({
+        ok: true,
+        source: `finnhub_profile:${v.profileStatus},finnhub_candle:${v.candleStatus},stooq:${v.stooqStatus}`,
+      }),
+    ),
   ]);
 
   return NextResponse.json({
@@ -51,6 +76,7 @@ export async function POST(request: Request) {
       technical,
       earnings,
       options,
+      fundamentals,
     },
   });
 }
