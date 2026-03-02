@@ -62,19 +62,9 @@ export function EnrichmentPanel({
   const intensity = enrichment.intensity ?? {};
   const leverage = enrichment.leverage ?? {};
   const segmentMetrics = enrichment.segmentMetrics ?? {};
-  const sections = enrichment.filingSections ?? {};
   const consensus = enrichment.consensus;
   const governanceSignals = enrichment.governanceSignals ?? [];
   const deterministicMissingData = enrichment.deterministicMissingData ?? [];
-
-  const snippets = [
-    { label: "10-K MD&A", value: sections.latest10kMdna },
-    { label: "10-K Risk Factors", value: sections.latest10kRiskFactors },
-    { label: "10-K Segment Notes", value: sections.latest10kSegmentNotes },
-    { label: "10-Q MD&A", value: sections.latest10qMdna },
-    { label: "10-Q Risk Factors", value: sections.latest10qRiskFactors },
-    { label: "10-Q Segment Notes", value: sections.latest10qSegmentNotes },
-  ].filter((s) => Boolean(s.value));
 
   return (
     <section className="space-y-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -162,20 +152,6 @@ export function EnrichmentPanel({
               <li key={item}>{item}</li>
             ))}
           </ul>
-        )}
-      </div>
-
-      <div className="space-y-2">
-        <p className="text-sm font-semibold text-slate-800">Extracted Filing Snippets</p>
-        {!snippets.length ? (
-          <p className="text-sm text-slate-500">No filing snippets extracted from latest 10-K/10-Q documents.</p>
-        ) : (
-          snippets.map((snippet) => (
-            <article key={snippet.label} className="rounded-lg border border-slate-200 p-3">
-              <p className="text-sm font-semibold text-slate-800">{snippet.label}</p>
-              <p className="mt-1 line-clamp-5 text-sm text-slate-700">{snippet.value}</p>
-            </article>
-          ))
         )}
       </div>
     </section>
