@@ -9,6 +9,13 @@ export type FinancialYear = {
   totalDebt: number;
   cash: number;
   sharesOutstanding: number;
+  currentAssets: number;
+  currentLiabilities: number;
+  inventory: number;
+  interestExpense: number;
+  capex: number;
+  rAndD: number;
+  stockBasedComp: number;
 };
 
 export type HealthBreakdown = {
@@ -72,6 +79,38 @@ export type ValuationReport = {
     latest10K: FilingDocument | null;
     latest10Q: FilingDocument | null;
     recent10k10q: FilingDocument[];
+  };
+  enrichment: {
+    liquidity: {
+      currentRatio: number;
+      quickRatio: number;
+      interestCoverage: number;
+      debtToFcf: number | null;
+      cashToDebt: number;
+    };
+    intensity: {
+      capexToRevenue: number;
+      rAndDToRevenue: number;
+      sbcToRevenue: number;
+      fcfMargin: number;
+    };
+    filingSections: {
+      latest10kMdna?: string | null;
+      latest10kRiskFactors?: string | null;
+      latest10kSegmentNotes?: string | null;
+      latest10qMdna?: string | null;
+      latest10qRiskFactors?: string | null;
+      latest10qSegmentNotes?: string | null;
+    };
+    consensus: {
+      enabled: boolean;
+      available: boolean;
+      source: string;
+      notes?: string;
+      forwardRevenueGrowthPct?: number;
+      forwardEpsGrowthPct?: number;
+    };
+    governanceSignals: string[];
   };
   dataQuality: {
     historyYears: number;

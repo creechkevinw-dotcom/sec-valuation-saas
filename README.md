@@ -18,11 +18,12 @@ To keep your work in VS Code minimal, provide these once and I can do the rest o
    - `sec-valuation-saas/1.0 your-email@domain.com`
 5. `OPENAI_API_KEY` (required for AI analysis)
 6. `FINNHUB_API_KEY` (required for live market, technicals, options, and trade recommendation engine)
-7. Stripe (optional for MVP hook now, required before paid launch):
+7. `CONSENSUS_ENABLED` (optional, default `false`; enables consensus provider hook when configured)
+8. Stripe (optional for MVP hook now, required before paid launch):
    - `STRIPE_SECRET_KEY`
    - `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`
    - `STRIPE_WEBHOOK_SECRET`
-8. Deployment targets:
+9. Deployment targets:
    - Supabase project ref + org
    - Vercel team/project (or permission to create)
    - GitHub repo URL to push this code

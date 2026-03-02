@@ -27,6 +27,14 @@ export function scoreFinancialHealth(history: FinancialYear[]): {
   const profitabilityMargin = latest.revenue > 0 ? latest.netIncome / latest.revenue : 0;
   const leverageRatio = latest.revenue > 0 ? latest.totalDebt / latest.revenue : 0;
   const liquidityRatio = latest.totalDebt > 0 ? latest.cash / latest.totalDebt : 1;
+  const currentRatio =
+    latest.currentLiabilities > 0 ? latest.currentAssets / latest.currentLiabilities : 1;
+  const quickRatio =
+    latest.currentLiabilities > 0
+      ? (latest.currentAssets - latest.inventory) / latest.currentLiabilities
+      : 1;
+  const interestCoverage =
+    latest.interestExpense > 0 ? latest.ebit / latest.interestExpense : latest.ebit > 0 ? 5 : 0;
   const years = history.length - 1;
   const growthRate = years > 0 && first.revenue > 0
     ? Math.pow(latest.revenue / first.revenue, 1 / years) - 1
@@ -36,7 +44,7 @@ export function scoreFinancialHealth(history: FinancialYear[]): {
   const breakdown: HealthBreakdown = {
     profitability: clamp((profitabilityMargin + 0.05) * 500),
     leverage: clamp((1.5 - leverageRatio) * 60),
-    liquidity: clamp(liquidityRatio * 50),
+    liquidity: clamp(liquidityRatio * 20 + currentRatio * 18 + quickRatio * 12 + interestCoverage * 5),
     growth: clamp((growthRate + 0.05) * 400),
     cashConversion: clamp(cashConversionRate * 60),
   };

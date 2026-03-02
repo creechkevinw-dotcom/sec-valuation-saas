@@ -9,6 +9,7 @@ import { AiAnalysisPanel } from "@/components/ai-analysis-panel";
 import { AppNavTabs } from "@/components/app-nav-tabs";
 import { WatchlistSaveButton } from "@/components/watchlist-save-button";
 import { TradeRecommendationPanel } from "@/components/trade-recommendation-panel";
+import { EnrichmentPanel } from "@/components/enrichment-panel";
 
 export const dynamic = "force-dynamic";
 
@@ -71,6 +72,38 @@ export default async function ValuationDetailPage({
       }>;
     };
     dataQuality?: { historyYears: number; has10K: boolean; has10Q: boolean; score: number };
+    enrichment?: {
+      liquidity?: {
+        currentRatio?: number;
+        quickRatio?: number;
+        interestCoverage?: number;
+        debtToFcf?: number | null;
+        cashToDebt?: number;
+      };
+      intensity?: {
+        capexToRevenue?: number;
+        rAndDToRevenue?: number;
+        sbcToRevenue?: number;
+        fcfMargin?: number;
+      };
+      filingSections?: {
+        latest10kMdna?: string | null;
+        latest10kRiskFactors?: string | null;
+        latest10kSegmentNotes?: string | null;
+        latest10qMdna?: string | null;
+        latest10qRiskFactors?: string | null;
+        latest10qSegmentNotes?: string | null;
+      };
+      consensus?: {
+        enabled?: boolean;
+        available?: boolean;
+        source?: string;
+        notes?: string;
+        forwardRevenueGrowthPct?: number;
+        forwardEpsGrowthPct?: number;
+      };
+      governanceSignals?: string[];
+    };
   };
 
   return (
@@ -109,6 +142,7 @@ export default async function ValuationDetailPage({
         recent={report.filings?.recent10k10q ?? []}
         quality={report.dataQuality ?? { historyYears: 0, has10K: false, has10Q: false, score: 0 }}
       />
+      <EnrichmentPanel enrichment={report.enrichment} />
       <FinancialHistoryChart rows={report.history ?? []} />
       <SensitivityTable rows={report.dcf?.sensitivity ?? []} />
     </main>

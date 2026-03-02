@@ -33,6 +33,12 @@ const FIELDS = {
   debt: ["LongTermDebt", "LongTermDebtAndFinanceLeaseObligations"],
   cash: ["CashAndCashEquivalentsAtCarryingValue"],
   shares: ["CommonStockSharesOutstanding", "EntityCommonStockSharesOutstanding"],
+  currentAssets: ["AssetsCurrent"],
+  currentLiabilities: ["LiabilitiesCurrent"],
+  inventory: ["InventoryNet", "InventoryFinishedGoods"],
+  interestExpense: ["InterestExpense"],
+  rAndD: ["ResearchAndDevelopmentExpense"],
+  stockBasedComp: ["ShareBasedCompensation"],
 } as const;
 
 function headers() {

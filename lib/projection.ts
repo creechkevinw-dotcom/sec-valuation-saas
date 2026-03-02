@@ -20,7 +20,12 @@ export function projectFinancials(
 
   const baseGrowth = Math.max(-0.05, Math.min(0.2, cagr(first.revenue, latest.revenue, history.length - 1)));
   const currentMargin = latest.revenue > 0 ? latest.fcf / latest.revenue : 0.1;
-  const targetMargin = Math.max(0.05, Math.min(0.35, currentMargin + 0.02));
+  const capexIntensity = latest.revenue > 0 ? latest.capex / latest.revenue : 0.04;
+  const rAndDIntensity = latest.revenue > 0 ? latest.rAndD / latest.revenue : 0.03;
+  const sbcIntensity = latest.revenue > 0 ? latest.stockBasedComp / latest.revenue : 0.01;
+  const qualityAdjustment =
+    Math.max(-0.02, Math.min(0.03, rAndDIntensity * 0.25 - capexIntensity * 0.1 - sbcIntensity * 0.2));
+  const targetMargin = Math.max(0.04, Math.min(0.35, currentMargin + 0.02 + qualityAdjustment));
 
   const projected: ProjectionYear[] = [];
   let revenue = latest.revenue;
@@ -28,7 +33,7 @@ export function projectFinancials(
   for (let i = 1; i <= yearsToProject; i += 1) {
     const year = latest.year + i;
     const fade = 1 - (i - 1) / yearsToProject;
-    const growth = baseGrowth * (0.7 + 0.3 * fade);
+    const growth = baseGrowth * (0.7 + 0.3 * fade) + qualityAdjustment * 0.35;
     const margin = currentMargin + (targetMargin - currentMargin) * (i / yearsToProject);
     revenue *= 1 + growth;
 

@@ -50,5 +50,20 @@ export async function generateReportPdf(report: ValuationReport): Promise<Uint8A
     cursor -= 16;
   }
 
+  cursor -= 8;
+  draw("Enrichment Metrics", 50, cursor, 14, true);
+  cursor -= 18;
+  draw(`Current Ratio: ${report.enrichment.liquidity.currentRatio.toFixed(2)}`, 50, cursor, 10);
+  cursor -= 14;
+  draw(`Quick Ratio: ${report.enrichment.liquidity.quickRatio.toFixed(2)}`, 50, cursor, 10);
+  cursor -= 14;
+  draw(`Interest Coverage: ${report.enrichment.liquidity.interestCoverage.toFixed(2)}`, 50, cursor, 10);
+  cursor -= 14;
+  draw(`Capex/Revenue: ${(report.enrichment.intensity.capexToRevenue * 100).toFixed(2)}%`, 50, cursor, 10);
+  cursor -= 14;
+  draw(`R&D/Revenue: ${(report.enrichment.intensity.rAndDToRevenue * 100).toFixed(2)}%`, 50, cursor, 10);
+  cursor -= 14;
+  draw(`SBC/Revenue: ${(report.enrichment.intensity.sbcToRevenue * 100).toFixed(2)}%`, 50, cursor, 10);
+
   return pdf.save();
 }
