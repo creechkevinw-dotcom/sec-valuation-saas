@@ -47,6 +47,14 @@ export function EnrichmentPanel({
       targetHigh?: number;
       targetLow?: number;
       ratingConsensus?: string;
+      ratingScore?: number;
+      ratingsBreakdown?: {
+        strongBuy: number;
+        buy: number;
+        hold: number;
+        sell: number;
+        strongSell: number;
+      };
       revisionTrend?: "up" | "down" | "flat";
       updatedAt?: string;
     };
@@ -118,10 +126,23 @@ export function EnrichmentPanel({
               <p>Forward EPS Growth: {consensus.forwardEpsGrowthPct.toFixed(2)}%</p>
             ) : null}
             {consensus.analystCount != null ? <p>Analyst Count: {consensus.analystCount}</p> : null}
-            {consensus.targetMean != null ? <p>Target Mean: ${consensus.targetMean.toFixed(2)}</p> : null}
-            {consensus.targetHigh != null ? <p>Target High: ${consensus.targetHigh.toFixed(2)}</p> : null}
-            {consensus.targetLow != null ? <p>Target Low: ${consensus.targetLow.toFixed(2)}</p> : null}
-            {consensus.ratingConsensus ? <p>Rating Consensus: {consensus.ratingConsensus}</p> : null}
+            <p>
+              Price Targets (Analyst Avg) | Low:{" "}
+              {consensus.targetLow != null ? `$${consensus.targetLow.toFixed(2)}` : "-"} | Medium:{" "}
+              {consensus.targetMean != null ? `$${consensus.targetMean.toFixed(2)}` : "-"} | High:{" "}
+              {consensus.targetHigh != null ? `$${consensus.targetHigh.toFixed(2)}` : "-"}
+            </p>
+            <p>
+              Average Rating: {consensus.ratingConsensus ?? "-"}
+              {consensus.ratingScore != null ? ` (${consensus.ratingScore.toFixed(2)} / 5)` : ""}
+            </p>
+            {consensus.ratingsBreakdown ? (
+              <p>
+                Distribution | Strong Buy: {consensus.ratingsBreakdown.strongBuy} | Buy:{" "}
+                {consensus.ratingsBreakdown.buy} | Hold: {consensus.ratingsBreakdown.hold} | Sell:{" "}
+                {consensus.ratingsBreakdown.sell} | Strong Sell: {consensus.ratingsBreakdown.strongSell}
+              </p>
+            ) : null}
             {consensus.revisionTrend ? <p>Revision Trend: {consensus.revisionTrend}</p> : null}
             {consensus.updatedAt ? <p>Updated: {new Date(consensus.updatedAt).toLocaleDateString()}</p> : null}
             {consensus.notes ? <p className="text-slate-500">{consensus.notes}</p> : null}

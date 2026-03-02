@@ -118,6 +118,14 @@ export default async function ValuationDetailPage({
         targetHigh?: number;
         targetLow?: number;
         ratingConsensus?: string;
+        ratingScore?: number;
+        ratingsBreakdown?: {
+          strongBuy: number;
+          buy: number;
+          hold: number;
+          sell: number;
+          strongSell: number;
+        };
         revisionTrend?: "up" | "down" | "flat";
         updatedAt?: string;
       };

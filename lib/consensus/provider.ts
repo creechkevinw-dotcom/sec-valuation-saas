@@ -10,6 +10,14 @@ export type ConsensusSnapshot = {
   targetHigh?: number;
   targetLow?: number;
   ratingConsensus?: string;
+  ratingScore?: number;
+  ratingsBreakdown?: {
+    strongBuy: number;
+    buy: number;
+    hold: number;
+    sell: number;
+    strongSell: number;
+  };
   revisionTrend?: "up" | "down" | "flat";
   updatedAt?: string;
 };
@@ -75,21 +83,36 @@ function computeForwardGrowth(series: Array<{ period?: string; value: number | n
   return ((latest - previous) / Math.abs(previous)) * 100;
 }
 
-function inferRatingConsensus(point: RecommendationTrendPoint | null) {
-  if (!point) return "unavailable";
-  const strongBuy = point.strongBuy ?? 0;
-  const buy = point.buy ?? 0;
-  const hold = point.hold ?? 0;
-  const sell = point.sell ?? 0;
-  const strongSell = point.strongSell ?? 0;
+function computeRating(point: RecommendationTrendPoint | null) {
+  const breakdown = {
+    strongBuy: point?.strongBuy ?? 0,
+    buy: point?.buy ?? 0,
+    hold: point?.hold ?? 0,
+    sell: point?.sell ?? 0,
+    strongSell: point?.strongSell ?? 0,
+  };
+  const count =
+    breakdown.strongBuy + breakdown.buy + breakdown.hold + breakdown.sell + breakdown.strongSell;
+  if (count <= 0) {
+    return { label: "Unavailable", score: null as number | null, breakdown };
+  }
 
-  const bullish = strongBuy + buy;
-  const bearish = sell + strongSell;
+  const weighted =
+    breakdown.strongBuy * 5 +
+    breakdown.buy * 4 +
+    breakdown.hold * 3 +
+    breakdown.sell * 2 +
+    breakdown.strongSell * 1;
+  const score = weighted / count;
 
-  if (bullish > hold && bullish > bearish) return "bullish";
-  if (bearish > hold && bearish > bullish) return "bearish";
-  if (hold > bullish && hold > bearish) return "neutral";
-  return "mixed";
+  let label = "Hold";
+  if (score >= 4.5) label = "Strong Buy";
+  else if (score >= 3.8) label = "Buy / Outperform";
+  else if (score >= 3.2) label = "Hold";
+  else if (score >= 2.4) label = "Underperform";
+  else label = "Sell";
+
+  return { label, score, breakdown };
 }
 
 function inferRevisionTrend(recentGrowth: number | null) {
@@ -149,12 +172,13 @@ class FinnhubConsensusProvider implements ConsensusProvider {
       ? [...recommendations].sort((a, b) => periodSort(a.period, b.period)).at(-1) ?? null
       : null;
 
-    const analystCount = latestRecommendation
-      ? (latestRecommendation.buy ?? 0) +
-        (latestRecommendation.hold ?? 0) +
-        (latestRecommendation.sell ?? 0) +
-        (latestRecommendation.strongBuy ?? 0) +
-        (latestRecommendation.strongSell ?? 0)
+    const rating = computeRating(latestRecommendation);
+    const analystCount = rating.score != null
+      ? rating.breakdown.buy +
+        rating.breakdown.hold +
+        rating.breakdown.sell +
+        rating.breakdown.strongBuy +
+        rating.breakdown.strongSell
       : null;
 
     const forwardEpsGrowth = computeForwardGrowth(
@@ -184,7 +208,9 @@ class FinnhubConsensusProvider implements ConsensusProvider {
       targetMean: safeNumber(priceTarget.targetMean) ?? undefined,
       targetHigh: safeNumber(priceTarget.targetHigh) ?? undefined,
       targetLow: safeNumber(priceTarget.targetLow) ?? undefined,
-      ratingConsensus: inferRatingConsensus(latestRecommendation),
+      ratingConsensus: rating.label,
+      ratingScore: rating.score != null ? Number(rating.score.toFixed(2)) : undefined,
+      ratingsBreakdown: rating.breakdown,
       revisionTrend: inferRevisionTrend(forwardEpsGrowth),
       updatedAt: priceTarget.lastUpdated,
     };
