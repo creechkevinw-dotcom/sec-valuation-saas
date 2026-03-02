@@ -42,6 +42,18 @@ type PriceTargetResponse = {
   targetMean?: number;
 };
 
+type YahooQuoteSummary = {
+  quoteSummary?: {
+    result?: Array<{
+      financialData?: {
+        targetLowPrice?: { raw?: number };
+        targetMeanPrice?: { raw?: number };
+        targetHighPrice?: { raw?: number };
+      };
+    }>;
+  };
+};
+
 type EpsEstimatePoint = {
   period?: string;
   epsAvg?: number;
@@ -130,6 +142,28 @@ async function fetchJson<T>(url: string): Promise<T> {
   return (await res.json()) as T;
 }
 
+async function fetchYahooTargets(symbol: string): Promise<{
+  targetLow?: number;
+  targetMean?: number;
+  targetHigh?: number;
+}> {
+  const res = await fetch(
+    `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${symbol}?modules=financialData`,
+    { cache: "no-store" },
+  );
+  if (!res.ok) {
+    return {};
+  }
+
+  const json = (await res.json()) as YahooQuoteSummary;
+  const fd = json.quoteSummary?.result?.[0]?.financialData;
+  return {
+    targetLow: safeNumber(fd?.targetLowPrice?.raw ?? null) ?? undefined,
+    targetMean: safeNumber(fd?.targetMeanPrice?.raw ?? null) ?? undefined,
+    targetHigh: safeNumber(fd?.targetHighPrice?.raw ?? null) ?? undefined,
+  };
+}
+
 class FinnhubConsensusProvider implements ConsensusProvider {
   async getConsensus(ticker: string): Promise<ConsensusSnapshot> {
     const symbol = ticker.trim().toUpperCase();
@@ -168,18 +202,38 @@ class FinnhubConsensusProvider implements ConsensusProvider {
     const epsEstimates = epsRes.status === "fulfilled" ? epsRes.value : [];
     const revenueEstimates = revenueRes.status === "fulfilled" ? revenueRes.value : [];
 
+    const finnhubTargetLow = safeNumber(priceTarget.targetLow) ?? undefined;
+    const finnhubTargetMean = safeNumber(priceTarget.targetMean) ?? undefined;
+    const finnhubTargetHigh = safeNumber(priceTarget.targetHigh) ?? undefined;
+
+    let targetLow = finnhubTargetLow;
+    let targetMean = finnhubTargetMean;
+    let targetHigh = finnhubTargetHigh;
+    let targetSource = "finnhub";
+
+    if (targetLow == null || targetMean == null || targetHigh == null) {
+      const yahooTargets = await fetchYahooTargets(symbol);
+      targetLow = targetLow ?? yahooTargets.targetLow;
+      targetMean = targetMean ?? yahooTargets.targetMean;
+      targetHigh = targetHigh ?? yahooTargets.targetHigh;
+      if (yahooTargets.targetLow != null || yahooTargets.targetMean != null || yahooTargets.targetHigh != null) {
+        targetSource = "finnhub+yahoo";
+      }
+    }
+
     const latestRecommendation = recommendations.length
       ? [...recommendations].sort((a, b) => periodSort(a.period, b.period)).at(-1) ?? null
       : null;
 
     const rating = computeRating(latestRecommendation);
-    const analystCount = rating.score != null
-      ? rating.breakdown.buy +
-        rating.breakdown.hold +
-        rating.breakdown.sell +
-        rating.breakdown.strongBuy +
-        rating.breakdown.strongSell
-      : null;
+    const analystCount =
+      rating.score != null
+        ? rating.breakdown.buy +
+          rating.breakdown.hold +
+          rating.breakdown.sell +
+          rating.breakdown.strongBuy +
+          rating.breakdown.strongSell
+        : null;
 
     const forwardEpsGrowth = computeForwardGrowth(
       epsEstimates.map((p) => ({ period: p.period, value: safeNumber(p.epsAvg) })),
@@ -190,14 +244,16 @@ class FinnhubConsensusProvider implements ConsensusProvider {
 
     const anyData =
       recommendations.length > 0 ||
-      safeNumber(priceTarget.targetMean) != null ||
+      targetMean != null ||
+      targetHigh != null ||
+      targetLow != null ||
       epsEstimates.length > 0 ||
       revenueEstimates.length > 0;
 
     const snapshot: ConsensusSnapshot = {
       enabled: true,
       available: anyData,
-      source: "finnhub",
+      source: targetSource,
       notes: anyData
         ? undefined
         : "No consensus payload returned from configured provider endpoints",
@@ -205,9 +261,9 @@ class FinnhubConsensusProvider implements ConsensusProvider {
         forwardRevenueGrowth != null ? clamp(forwardRevenueGrowth, -200, 200) : undefined,
       forwardEpsGrowthPct: forwardEpsGrowth != null ? clamp(forwardEpsGrowth, -200, 200) : undefined,
       analystCount: analystCount != null ? analystCount : undefined,
-      targetMean: safeNumber(priceTarget.targetMean) ?? undefined,
-      targetHigh: safeNumber(priceTarget.targetHigh) ?? undefined,
-      targetLow: safeNumber(priceTarget.targetLow) ?? undefined,
+      targetMean,
+      targetHigh,
+      targetLow,
       ratingConsensus: rating.label,
       ratingScore: rating.score != null ? Number(rating.score.toFixed(2)) : undefined,
       ratingsBreakdown: rating.breakdown,
