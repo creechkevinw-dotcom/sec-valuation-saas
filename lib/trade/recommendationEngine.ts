@@ -268,7 +268,26 @@ export async function generateTradeRecommendation(params: {
       earningsData: earnings,
     });
   } catch (error) {
-    return refusal("PROVIDER_ERROR", "AI explanation unavailable", { message: String(error) });
+    aiExplanation = {
+      shortTermTrade:
+        recommendation.shortTermTrade?.thesis ??
+        "Deterministic short-term setup unavailable for current signal state.",
+      longTermTrade:
+        recommendation.longTermTrade?.thesis ??
+        "Deterministic long-term setup unavailable for current signal state.",
+      optionsStrategy:
+        recommendation.optionsStrategy ??
+        "Options strategy unavailable. Use equity-only interpretation from deterministic signal.",
+      riskFactors: [
+        "AI narrative fallback in use",
+        "Review deterministic entry, stop, and target directly",
+      ],
+      confidenceAdjustment: 0,
+    };
+    console.warn("AI explanation unavailable; using deterministic fallback", {
+      ticker,
+      message: error instanceof Error ? error.message : String(error),
+    });
   }
 
   const finalConfidence = Math.max(0, Math.min(100, confidence + aiExplanation.confidenceAdjustment));
