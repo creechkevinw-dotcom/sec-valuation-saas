@@ -26,6 +26,7 @@ type TradeSuccessPayload = {
   ticker: string;
   marketSnapshot: MarketSnapshot;
   technicalSnapshot: {
+    source: string;
     sma20: number;
     sma50: number;
     sma200: number;
@@ -67,7 +68,10 @@ type TradeRefusalPayload = {
   refused: true;
   reasonCode: string;
   reason: string;
-  details?: Record<string, unknown>;
+  details?: {
+    message?: string;
+    [key: string]: unknown;
+  };
 };
 
 const CONSENT_VERSION = "v1";
@@ -124,6 +128,8 @@ export function TradeRecommendationPanel({ ticker }: { ticker: string }) {
   const [result, setResult] = useState<TradeSuccessPayload | null>(null);
   const [refusal, setRefusal] = useState<TradeRefusalPayload | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [diagnostic, setDiagnostic] = useState<string | null>(null);
+  const [diagnosticBusy, setDiagnosticBusy] = useState(false);
   const autoRequestedRef = useRef(false);
 
   async function loadConsent() {
@@ -202,6 +208,27 @@ export function TradeRecommendationPanel({ ticker }: { ticker: string }) {
     }
   }, [ticker]);
 
+  const runDiagnostics = useCallback(async () => {
+    setDiagnosticBusy(true);
+    try {
+      const res = await fetch("/api/trade-recommendation/diagnose", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ticker }),
+      });
+      const payload = await res.json();
+      if (!res.ok) {
+        setDiagnostic(payload.error ?? "Diagnostics request failed");
+      } else {
+        setDiagnostic(JSON.stringify(payload, null, 2));
+      }
+    } catch {
+      setDiagnostic("Diagnostics request failed");
+    } finally {
+      setDiagnosticBusy(false);
+    }
+  }, [ticker]);
+
   useEffect(() => {
     void loadConsent();
   }, []);
@@ -270,14 +297,24 @@ export function TradeRecommendationPanel({ ticker }: { ticker: string }) {
             Signal-first output with AI explanation only. Refuses when data quality or risk checks fail.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={generateRecommendation}
-          disabled={busy || !consentAccepted}
-          className="rounded-md bg-slate-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
-        >
-          {busy ? "Generating..." : "Generate"}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={runDiagnostics}
+            disabled={diagnosticBusy}
+            className="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 disabled:opacity-60"
+          >
+            {diagnosticBusy ? "Diagnosing..." : "Diagnose"}
+          </button>
+          <button
+            type="button"
+            onClick={generateRecommendation}
+            disabled={busy || !consentAccepted}
+            className="rounded-md bg-slate-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+          >
+            {busy ? "Generating..." : "Generate"}
+          </button>
+        </div>
       </div>
 
       {consentAccepted === false ? (
@@ -297,10 +334,21 @@ export function TradeRecommendationPanel({ ticker }: { ticker: string }) {
 
       {error ? <p className="text-sm text-rose-600">{error}</p> : null}
 
+      {diagnostic ? (
+        <pre className="max-h-64 overflow-auto rounded-lg border border-slate-200 bg-slate-950 p-3 text-xs text-slate-100">
+          {diagnostic}
+        </pre>
+      ) : null}
+
       {refusal ? (
         <div className="rounded-lg border border-rose-300 bg-rose-50 p-3">
           <p className="text-sm font-semibold text-rose-800">Recommendation refused: {refusal.reasonCode}</p>
           <p className="mt-1 text-sm text-rose-700">{refusal.reason}</p>
+          {refusal.details?.message ? (
+            <p className="mt-2 rounded bg-rose-100 px-2 py-1 font-mono text-xs text-rose-800">
+              {String(refusal.details.message)}
+            </p>
+          ) : null}
         </div>
       ) : null}
 
@@ -348,6 +396,7 @@ export function TradeRecommendationPanel({ ticker }: { ticker: string }) {
             <div className="rounded-lg border border-slate-200 p-4">
               <h4 className="text-sm font-semibold text-slate-900">Technical Dashboard</h4>
               <div className="mt-2 grid grid-cols-2 gap-2 text-sm text-slate-700">
+                <p>Source: {result.technicalSnapshot.source}</p>
                 <p>RSI(14): {result.technicalSnapshot.rsi14.toFixed(2)}</p>
                 <p>MACD: {result.technicalSnapshot.macd.toFixed(2)}</p>
                 <p>SMA20: {result.technicalSnapshot.sma20.toFixed(2)}</p>

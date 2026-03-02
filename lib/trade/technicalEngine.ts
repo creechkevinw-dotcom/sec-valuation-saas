@@ -14,6 +14,11 @@ type CandleResponse = {
   v: number[];
 };
 
+type CandleFetchResult = {
+  candles: CandleResponse;
+  source: "finnhub" | "stooq";
+};
+
 function requireMarketApiKey() {
   const key = process.env.FINNHUB_API_KEY;
   if (!key) {
@@ -22,7 +27,72 @@ function requireMarketApiKey() {
   return key;
 }
 
-async function fetchCandles(ticker: string): Promise<CandleResponse> {
+function parseStooqCsv(csv: string): CandleResponse {
+  const lines = csv
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+
+  if (lines.length <= 1) {
+    throw new Error("TECHNICAL_FALLBACK_NO_DATA");
+  }
+
+  const rows = lines.slice(1).map((line) => line.split(","));
+  const candles = rows
+    .map((cols) => {
+      const date = cols[0];
+      const open = Number(cols[1]);
+      const high = Number(cols[2]);
+      const low = Number(cols[3]);
+      const close = Number(cols[4]);
+      const volume = Number(cols[5]);
+      const ts = Date.parse(`${date}T16:00:00Z`);
+
+      if (
+        !Number.isFinite(ts) ||
+        !Number.isFinite(open) ||
+        !Number.isFinite(high) ||
+        !Number.isFinite(low) ||
+        !Number.isFinite(close) ||
+        open <= 0 ||
+        high <= 0 ||
+        low <= 0 ||
+        close <= 0
+      ) {
+        return null;
+      }
+
+      return { ts: Math.floor(ts / 1000), open, high, low, close, volume: Number.isFinite(volume) ? volume : 0 };
+    })
+    .filter((row): row is { ts: number; open: number; high: number; low: number; close: number; volume: number } => row !== null)
+    .sort((a, b) => a.ts - b.ts);
+
+  if (candles.length === 0) {
+    throw new Error("TECHNICAL_FALLBACK_NO_DATA");
+  }
+
+  return {
+    s: "ok",
+    t: candles.map((c) => c.ts),
+    o: candles.map((c) => c.open),
+    h: candles.map((c) => c.high),
+    l: candles.map((c) => c.low),
+    c: candles.map((c) => c.close),
+    v: candles.map((c) => c.volume),
+  };
+}
+
+async function fetchCandlesFromStooq(ticker: string): Promise<CandleResponse> {
+  const symbol = `${ticker.toLowerCase()}.us`;
+  const res = await fetch(`https://stooq.com/q/d/l/?s=${symbol}&i=d`, { cache: "no-store" });
+  if (!res.ok) {
+    throw new Error(`TECHNICAL_FALLBACK_HTTP_${res.status}`);
+  }
+  const csv = await res.text();
+  return parseStooqCsv(csv);
+}
+
+async function fetchCandles(ticker: string): Promise<CandleFetchResult> {
   const key = requireMarketApiKey();
   const to = Math.floor(Date.now() / 1000);
   const from = to - 550 * 24 * 60 * 60;
@@ -44,7 +114,7 @@ async function fetchCandles(ticker: string): Promise<CandleResponse> {
 
       const json = (await res.json()) as CandleResponse;
       if (json.s === "ok") {
-        return json;
+        return { candles: json, source: "finnhub" };
       }
       if (json.s === "no_data") {
         throw new Error("TECHNICAL_NO_DATA");
@@ -58,7 +128,14 @@ async function fetchCandles(ticker: string): Promise<CandleResponse> {
     }
   }
 
-  throw lastError instanceof Error ? lastError : new Error("TECHNICAL_PROVIDER_ERROR");
+  try {
+    const fallback = await fetchCandlesFromStooq(ticker);
+    return { candles: fallback, source: "stooq" };
+  } catch (fallbackError) {
+    const primaryMessage = lastError instanceof Error ? lastError.message : String(lastError);
+    const fallbackMessage = fallbackError instanceof Error ? fallbackError.message : String(fallbackError);
+    throw new Error(`TECHNICAL_PROVIDER_ERROR_PRIMARY_${primaryMessage}_FALLBACK_${fallbackMessage}`);
+  }
 }
 
 function sma(values: number[], period: number) {
@@ -114,7 +191,8 @@ export async function getTechnicalSnapshot(ticker: string): Promise<TechnicalSna
   const cached = cacheGet<TechnicalSnapshot>(cacheKey);
   if (cached) return cached;
 
-  const candles = await fetchCandles(symbol);
+  const fetched = await fetchCandles(symbol);
+  const candles = fetched.candles;
   const close = candles.c;
   const high = candles.h;
   const low = candles.l;
@@ -164,6 +242,7 @@ export async function getTechnicalSnapshot(ticker: string): Promise<TechnicalSna
   );
 
   const snapshot: TechnicalSnapshot = {
+    source: fetched.source,
     points: close.length,
     sma20,
     sma50,

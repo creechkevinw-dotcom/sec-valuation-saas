@@ -18,6 +18,7 @@ export type MarketSnapshot = {
 };
 
 export type TechnicalSnapshot = {
+  source: string;
   points: number;
   sma20: number;
   sma50: number;
