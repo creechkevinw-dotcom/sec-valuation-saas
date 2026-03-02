@@ -7,9 +7,14 @@ type SecCompanyTicker = {
 };
 
 type CompanyFactPoint = {
+  start?: string;
   end?: string;
   val: number;
   fy?: number;
+  fp?: string;
+  form?: string;
+  filed?: string;
+  frame?: string;
 };
 
 type FactUnits = {
@@ -101,16 +106,52 @@ export function extractYearlySeries(
     }
   }
 
-  const yearly = new Map<number, number>();
+  const annualFormPattern = /^(10-K|10-K\/A|20-F|20-F\/A|40-F|40-F\/A)$/i;
+  const byYear = new Map<number, CompanyFactPoint[]>();
+
   for (const row of entries) {
     const year = row.fy ?? (row.end ? new Date(row.end).getUTCFullYear() : undefined);
     if (!year || !Number.isFinite(row.val)) {
       continue;
     }
-    const prior = yearly.get(year);
-    if (prior === undefined || Math.abs(row.val) > Math.abs(prior)) {
-      yearly.set(year, row.val);
+    const list = byYear.get(year) ?? [];
+    list.push(row);
+    byYear.set(year, list);
+  }
+
+  const isAnnualPoint = (row: CompanyFactPoint) => {
+    if ((row.fp ?? "").toUpperCase() === "FY") return true;
+    if (annualFormPattern.test(row.form ?? "")) return true;
+    if (/^CY\d{4}$/i.test(row.frame ?? "")) return true;
+    if (row.start && row.end) {
+      const start = new Date(row.start).getTime();
+      const end = new Date(row.end).getTime();
+      if (Number.isFinite(start) && Number.isFinite(end)) {
+        const days = (end - start) / (24 * 60 * 60_000);
+        if (days >= 330) return true;
+      }
     }
+    return false;
+  };
+
+  const yearly = new Map<number, number>();
+  const hasAnyAnnual = entries.some(isAnnualPoint);
+
+  for (const [year, rows] of byYear.entries()) {
+    const annualRows = rows.filter(isAnnualPoint);
+    const pool = annualRows.length > 0 ? annualRows : hasAnyAnnual ? [] : rows;
+    if (pool.length === 0) {
+      continue;
+    }
+
+    const selected = [...pool].sort((a, b) => {
+      const filedA = a.filed ? new Date(a.filed).getTime() : 0;
+      const filedB = b.filed ? new Date(b.filed).getTime() : 0;
+      if (filedA !== filedB) return filedB - filedA;
+      return Math.abs(b.val) - Math.abs(a.val);
+    })[0];
+
+    yearly.set(year, selected.val);
   }
 
   return yearly;

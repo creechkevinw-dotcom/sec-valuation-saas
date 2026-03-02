@@ -201,6 +201,12 @@ class FinnhubConsensusProvider implements ConsensusProvider {
     const priceTarget = targetRes.status === "fulfilled" ? targetRes.value : {};
     const epsEstimates = epsRes.status === "fulfilled" ? epsRes.value : [];
     const revenueEstimates = revenueRes.status === "fulfilled" ? revenueRes.value : [];
+    const targetFetchError =
+      targetRes.status === "rejected"
+        ? targetRes.reason instanceof Error
+          ? targetRes.reason.message
+          : "Price target provider request failed"
+        : null;
 
     const finnhubTargetLow = safeNumber(priceTarget.targetLow) ?? undefined;
     const finnhubTargetMean = safeNumber(priceTarget.targetMean) ?? undefined;
@@ -242,21 +248,27 @@ class FinnhubConsensusProvider implements ConsensusProvider {
       revenueEstimates.map((p) => ({ period: p.period, value: safeNumber(p.revenueAvg) })),
     );
 
+    const hasTargets = targetMean != null || targetHigh != null || targetLow != null;
     const anyData =
       recommendations.length > 0 ||
-      targetMean != null ||
-      targetHigh != null ||
-      targetLow != null ||
+      hasTargets ||
       epsEstimates.length > 0 ||
       revenueEstimates.length > 0;
+
+    let notes: string | undefined;
+    if (!anyData) {
+      notes = "No consensus payload returned from configured provider endpoints";
+    } else if (!hasTargets && targetFetchError?.includes("CONSENSUS_HTTP_403")) {
+      notes = "Analyst rating is available, but price target endpoint is restricted on current provider plan.";
+    } else if (!hasTargets) {
+      notes = "Analyst rating is available, but provider did not return low/mean/high price targets.";
+    }
 
     const snapshot: ConsensusSnapshot = {
       enabled: true,
       available: anyData,
       source: targetSource,
-      notes: anyData
-        ? undefined
-        : "No consensus payload returned from configured provider endpoints",
+      notes,
       forwardRevenueGrowthPct:
         forwardRevenueGrowth != null ? clamp(forwardRevenueGrowth, -200, 200) : undefined,
       forwardEpsGrowthPct: forwardEpsGrowth != null ? clamp(forwardEpsGrowth, -200, 200) : undefined,

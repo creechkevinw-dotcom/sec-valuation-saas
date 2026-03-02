@@ -29,32 +29,35 @@ export function ConsensusSummaryCard({
       ) : !consensus?.available ? (
         <p className="mt-2 text-sm text-slate-500">{consensus?.notes ?? "Consensus data not available for this ticker."}</p>
       ) : (
-        <div className="mt-3 grid gap-3 md:grid-cols-2 lg:grid-cols-4">
-          <div className="rounded-lg border border-slate-200 p-3">
-            <p className="text-xs uppercase tracking-wide text-slate-500">Target Low</p>
-            <p className="mt-1 text-sm font-semibold text-slate-900">{formatMoney(consensus.targetLow)}</p>
+        <div className="mt-3 space-y-2">
+          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+            <div className="rounded-lg border border-slate-200 p-3">
+              <p className="text-xs uppercase tracking-wide text-slate-500">Target Low</p>
+              <p className="mt-1 text-sm font-semibold text-slate-900">{formatMoney(consensus.targetLow)}</p>
+            </div>
+            <div className="rounded-lg border border-slate-200 p-3">
+              <p className="text-xs uppercase tracking-wide text-slate-500">Target Medium</p>
+              <p className="mt-1 text-sm font-semibold text-slate-900">{formatMoney(consensus.targetMean)}</p>
+            </div>
+            <div className="rounded-lg border border-slate-200 p-3">
+              <p className="text-xs uppercase tracking-wide text-slate-500">Target High</p>
+              <p className="mt-1 text-sm font-semibold text-slate-900">{formatMoney(consensus.targetHigh)}</p>
+            </div>
+            <div className="rounded-lg border border-slate-200 p-3">
+              <p className="text-xs uppercase tracking-wide text-slate-500">Average Rating</p>
+              <p className="mt-1 text-sm font-semibold text-slate-900">
+                {consensus.ratingConsensus ?? "-"}
+                {consensus.ratingScore != null ? ` (${consensus.ratingScore.toFixed(2)}/5)` : ""}
+              </p>
+              <p className="mt-1 text-xs text-slate-500">
+                Analysts: {consensus.analystCount ?? "-"} | Revision: {consensus.revisionTrend ?? "-"}
+              </p>
+              <p className="mt-1 text-xs text-slate-500">
+                Updated: {consensus.updatedAt ? new Date(consensus.updatedAt).toLocaleDateString() : "-"}
+              </p>
+            </div>
           </div>
-          <div className="rounded-lg border border-slate-200 p-3">
-            <p className="text-xs uppercase tracking-wide text-slate-500">Target Medium</p>
-            <p className="mt-1 text-sm font-semibold text-slate-900">{formatMoney(consensus.targetMean)}</p>
-          </div>
-          <div className="rounded-lg border border-slate-200 p-3">
-            <p className="text-xs uppercase tracking-wide text-slate-500">Target High</p>
-            <p className="mt-1 text-sm font-semibold text-slate-900">{formatMoney(consensus.targetHigh)}</p>
-          </div>
-          <div className="rounded-lg border border-slate-200 p-3">
-            <p className="text-xs uppercase tracking-wide text-slate-500">Average Rating</p>
-            <p className="mt-1 text-sm font-semibold text-slate-900">
-              {consensus.ratingConsensus ?? "-"}
-              {consensus.ratingScore != null ? ` (${consensus.ratingScore.toFixed(2)}/5)` : ""}
-            </p>
-            <p className="mt-1 text-xs text-slate-500">
-              Analysts: {consensus.analystCount ?? "-"} | Revision: {consensus.revisionTrend ?? "-"}
-            </p>
-            <p className="mt-1 text-xs text-slate-500">
-              Updated: {consensus.updatedAt ? new Date(consensus.updatedAt).toLocaleDateString() : "-"}
-            </p>
-          </div>
+          {consensus.notes ? <p className="text-xs text-slate-500">{consensus.notes}</p> : null}
         </div>
       )}
     </section>
