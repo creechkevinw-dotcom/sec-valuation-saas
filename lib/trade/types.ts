@@ -3,6 +3,8 @@ export type SessionStatus = "PRE" | "OPEN" | "POST" | "CLOSED";
 export type MarketSnapshot = {
   ticker: string;
   price: number;
+  dayChange: number;
+  dayChangePct: number;
   lastTradePrice: number;
   lastTradeTimestamp: string;
   bid: number;

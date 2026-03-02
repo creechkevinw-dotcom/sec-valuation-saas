@@ -93,6 +93,8 @@ export async function getMarketSnapshot(ticker: string): Promise<MarketSnapshot>
   const rawPrice = Number(quote.c);
   const previousClose = Number(quote.pc ?? 0);
   const price = rawPrice > 0 ? rawPrice : previousClose;
+  const dayChange = previousClose > 0 ? price - previousClose : 0;
+  const dayChangePct = previousClose > 0 ? (dayChange / previousClose) * 100 : 0;
   const bid = bidAsk?.b && Number(bidAsk.b) > 0 ? Number(bidAsk.b) : price;
   const ask = bidAsk?.a && Number(bidAsk.a) > 0 ? Number(bidAsk.a) : price;
   const midpoint = bid > 0 && ask > 0 ? (bid + ask) / 2 : price;
@@ -127,6 +129,8 @@ export async function getMarketSnapshot(ticker: string): Promise<MarketSnapshot>
   const snapshot: MarketSnapshot = {
     ticker: symbol,
     price,
+    dayChange,
+    dayChangePct,
     lastTradePrice: price,
     lastTradeTimestamp,
     bid,

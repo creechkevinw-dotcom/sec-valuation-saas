@@ -5,11 +5,15 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 type MarketSnapshot = {
   ticker: string;
   price: number;
+  dayChange: number;
+  dayChangePct: number;
   bid: number;
   ask: number;
   spreadPct: number;
   sessionStatus: "PRE" | "OPEN" | "POST" | "CLOSED";
   lastTradeTimestamp: string;
+  source?: string;
+  stale?: boolean;
 };
 
 type TradeLeg = {
@@ -78,6 +82,11 @@ const CONSENT_VERSION = "v1";
 
 function formatMoney(value: number) {
   return `$${value.toFixed(2)}`;
+}
+
+function formatSigned(value: number) {
+  const sign = value > 0 ? "+" : "";
+  return `${sign}${value.toFixed(2)}`;
 }
 
 function ConfidenceMeter({ value }: { value: number }) {
@@ -264,15 +273,33 @@ export function TradeRecommendationPanel({ ticker }: { ticker: string }) {
     return Array.from(merged);
   }, [result]);
 
+  const changeText = liveSnapshot
+    ? `${formatSigned(liveSnapshot.dayChange)} (${formatSigned(liveSnapshot.dayChangePct)}%)`
+    : "";
+  const changeColor = liveSnapshot
+    ? liveSnapshot.dayChange > 0
+      ? "text-emerald-700"
+      : liveSnapshot.dayChange < 0
+        ? "text-rose-700"
+        : "text-slate-700"
+    : "text-slate-700";
+
   return (
     <section className="space-y-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">Live Market</p>
           {liveSnapshot ? (
-            <p className="text-sm text-slate-800">
-              {liveSnapshot.ticker} {formatMoney(liveSnapshot.price)} | Bid {formatMoney(liveSnapshot.bid)} | Ask {formatMoney(liveSnapshot.ask)} | Spread {liveSnapshot.spreadPct.toFixed(2)}%
-            </p>
+            <div className="space-y-0.5 text-sm text-slate-800">
+              <p>
+                {liveSnapshot.ticker} {formatMoney(liveSnapshot.price)}{" "}
+                <span className={`font-semibold ${changeColor}`}>{changeText}</span>
+              </p>
+              <p>
+                Bid {formatMoney(liveSnapshot.bid)} | Ask {formatMoney(liveSnapshot.ask)} | Spread{" "}
+                {liveSnapshot.spreadPct.toFixed(2)}%
+              </p>
+            </div>
           ) : (
             <p className="text-sm text-slate-500">Loading live market snapshot...</p>
           )}
@@ -282,11 +309,15 @@ export function TradeRecommendationPanel({ ticker }: { ticker: string }) {
           <span className="inline-flex rounded-full border border-slate-300 bg-white px-2 py-1 text-xs font-semibold text-slate-700">
             Session: {liveSnapshot?.sessionStatus ?? "-"}
           </span>
+          {liveSnapshot?.stale ? (
+            <p className="mt-1 text-xs font-semibold text-amber-700">Stale snapshot</p>
+          ) : null}
           <p className="mt-1 text-xs text-slate-500">
             {liveSnapshot?.lastTradeTimestamp
               ? `Data: ${new Date(liveSnapshot.lastTradeTimestamp).toLocaleString()}`
               : "Data timestamp pending"}
           </p>
+          <p className="text-xs text-slate-500">Source: {liveSnapshot?.source ?? "provider"}</p>
         </div>
       </div>
 
