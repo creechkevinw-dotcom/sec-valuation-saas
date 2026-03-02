@@ -42,6 +42,13 @@ export function EnrichmentPanel({
       notes?: string;
       forwardRevenueGrowthPct?: number;
       forwardEpsGrowthPct?: number;
+      analystCount?: number;
+      targetMean?: number;
+      targetHigh?: number;
+      targetLow?: number;
+      ratingConsensus?: string;
+      revisionTrend?: "up" | "down" | "flat";
+      updatedAt?: string;
     };
     governanceSignals?: string[];
     deterministicMissingData?: string[];
@@ -120,6 +127,13 @@ export function EnrichmentPanel({
             {consensus.forwardEpsGrowthPct != null ? (
               <p>Forward EPS Growth: {consensus.forwardEpsGrowthPct.toFixed(2)}%</p>
             ) : null}
+            {consensus.analystCount != null ? <p>Analyst Count: {consensus.analystCount}</p> : null}
+            {consensus.targetMean != null ? <p>Target Mean: ${consensus.targetMean.toFixed(2)}</p> : null}
+            {consensus.targetHigh != null ? <p>Target High: ${consensus.targetHigh.toFixed(2)}</p> : null}
+            {consensus.targetLow != null ? <p>Target Low: ${consensus.targetLow.toFixed(2)}</p> : null}
+            {consensus.ratingConsensus ? <p>Rating Consensus: {consensus.ratingConsensus}</p> : null}
+            {consensus.revisionTrend ? <p>Revision Trend: {consensus.revisionTrend}</p> : null}
+            {consensus.updatedAt ? <p>Updated: {new Date(consensus.updatedAt).toLocaleDateString()}</p> : null}
             {consensus.notes ? <p className="text-slate-500">{consensus.notes}</p> : null}
           </div>
         )}
