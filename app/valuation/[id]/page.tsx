@@ -10,6 +10,7 @@ import { AppNavTabs } from "@/components/app-nav-tabs";
 import { WatchlistSaveButton } from "@/components/watchlist-save-button";
 import { TradeRecommendationPanel } from "@/components/trade-recommendation-panel";
 import { EnrichmentPanel } from "@/components/enrichment-panel";
+import { ConsensusSummaryCard } from "@/components/consensus-summary-card";
 
 export const dynamic = "force-dynamic";
 
@@ -161,6 +162,7 @@ export default async function ValuationDetailPage({
         bull={Number(data.fair_value_bull)}
         bear={Number(data.fair_value_bear)}
       />
+      <ConsensusSummaryCard consensus={report.enrichment?.consensus} />
       <TradeRecommendationPanel ticker={report.ticker ?? data.ticker} />
       <ScoreCard score={data.health_score} />
       <AiAnalysisPanel valuationId={id} />
