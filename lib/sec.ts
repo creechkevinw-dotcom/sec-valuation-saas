@@ -39,6 +39,12 @@ const FIELDS = {
   interestExpense: ["InterestExpense"],
   rAndD: ["ResearchAndDevelopmentExpense"],
   stockBasedComp: ["ShareBasedCompensation"],
+  shortTermDebt: ["ShortTermBorrowings", "DebtCurrent"],
+  currentLongTermDebt: ["LongTermDebtCurrent"],
+  shareholderEquity: [
+    "StockholdersEquity",
+    "StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest",
+  ],
 } as const;
 
 function headers() {

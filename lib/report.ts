@@ -29,6 +29,12 @@ function computeEnrichment(reportHistory: ValuationReport["history"]) {
         sbcToRevenue: 0,
         fcfMargin: 0,
       },
+      leverage: {
+        debtToEquity: null,
+        shortDebtPct: null,
+        currentMaturityDebtPct: null,
+        bookValuePerShare: 0,
+      },
     };
   }
 
@@ -48,6 +54,13 @@ function computeEnrichment(reportHistory: ValuationReport["history"]) {
       rAndDToRevenue: latest.revenue > 0 ? latest.rAndD / latest.revenue : 0,
       sbcToRevenue: latest.revenue > 0 ? latest.stockBasedComp / latest.revenue : 0,
       fcfMargin: latest.revenue > 0 ? latest.fcf / latest.revenue : 0,
+    },
+    leverage: {
+      debtToEquity: latest.shareholderEquity > 0 ? latest.totalDebt / latest.shareholderEquity : null,
+      shortDebtPct: latest.totalDebt > 0 ? latest.shortTermDebt / latest.totalDebt : null,
+      currentMaturityDebtPct:
+        latest.totalDebt > 0 ? latest.currentLongTermDebt / latest.totalDebt : null,
+      bookValuePerShare: latest.bookValuePerShare,
     },
   };
 }
@@ -81,13 +94,46 @@ export async function buildValuationReport(ticker: string): Promise<ValuationRep
 
   const { score, breakdown } = scoreFinancialHealth(history);
   const projections = projectFinancials(history, 5);
-  const [sections, consensus] = await Promise.all([
+  const [sectionsRaw, consensus] = await Promise.all([
     extractFilingSections({ latest10K: filings.latest10K, latest10Q: filings.latest10Q }),
     getConsensusForTicker(resolved.ticker),
   ]);
+  const sections = {
+    latest10kMdna: sectionsRaw.latest10kMdna,
+    latest10kRiskFactors: sectionsRaw.latest10kRiskFactors,
+    latest10kSegmentNotes: sectionsRaw.latest10kSegmentNotes,
+    latest10qMdna: sectionsRaw.latest10qMdna,
+    latest10qRiskFactors: sectionsRaw.latest10qRiskFactors,
+    latest10qSegmentNotes: sectionsRaw.latest10qSegmentNotes,
+  };
 
   const latest = history[history.length - 1];
   const enrichmentBase = computeEnrichment(history);
+  const deterministicMissingData: string[] = [];
+  if (latest.rAndD === 0) {
+    deterministicMissingData.push("R&D value unavailable or reported as zero in recent annual data.");
+  }
+  if (latest.capex === 0) {
+    deterministicMissingData.push("Capex value unavailable or reported as zero in recent annual data.");
+  }
+  if (latest.interestExpense === 0) {
+    deterministicMissingData.push("Interest expense unavailable; interest coverage may be incomplete.");
+  }
+  if (latest.shareholderEquity === 0) {
+    deterministicMissingData.push("Shareholder equity unavailable; book value metrics incomplete.");
+  }
+  if (!sections.latest10kMdna && !sections.latest10qMdna) {
+    deterministicMissingData.push("MD&A section extraction unavailable from latest 10-K/10-Q documents.");
+  }
+  if (
+    sectionsRaw.segmentMetrics.latest10kSegmentOperatingIncomeMentions <= 1 &&
+    sectionsRaw.segmentMetrics.latest10qSegmentOperatingIncomeMentions <= 1
+  ) {
+    deterministicMissingData.push("Segment profitability references are limited in extracted filing text.");
+  }
+  if (!consensus.enabled || !consensus.available) {
+    deterministicMissingData.push("Forward guidance / consensus feed is not enabled or unavailable.");
+  }
   const dcf = runDCF({
     projections,
     cash: latest.cash,
@@ -136,9 +182,26 @@ export async function buildValuationReport(ticker: string): Promise<ValuationRep
         sbcToRevenue: clamp(enrichmentBase.intensity.sbcToRevenue),
         fcfMargin: clamp(enrichmentBase.intensity.fcfMargin),
       },
+      leverage: {
+        debtToEquity:
+          enrichmentBase.leverage.debtToEquity != null
+            ? clamp(enrichmentBase.leverage.debtToEquity)
+            : null,
+        shortDebtPct:
+          enrichmentBase.leverage.shortDebtPct != null
+            ? clamp(enrichmentBase.leverage.shortDebtPct)
+            : null,
+        currentMaturityDebtPct:
+          enrichmentBase.leverage.currentMaturityDebtPct != null
+            ? clamp(enrichmentBase.leverage.currentMaturityDebtPct)
+            : null,
+        bookValuePerShare: clamp(enrichmentBase.leverage.bookValuePerShare),
+      },
+      segmentMetrics: sectionsRaw.segmentMetrics,
       filingSections: sections,
       consensus,
       governanceSignals: governanceSignalsFromSections(sections),
+      deterministicMissingData,
     },
     dataQuality: {
       historyYears: history.length,

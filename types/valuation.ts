@@ -16,6 +16,10 @@ export type FinancialYear = {
   capex: number;
   rAndD: number;
   stockBasedComp: number;
+  shortTermDebt: number;
+  currentLongTermDebt: number;
+  shareholderEquity: number;
+  bookValuePerShare: number;
 };
 
 export type HealthBreakdown = {
@@ -94,6 +98,18 @@ export type ValuationReport = {
       sbcToRevenue: number;
       fcfMargin: number;
     };
+    leverage: {
+      debtToEquity: number | null;
+      shortDebtPct: number | null;
+      currentMaturityDebtPct: number | null;
+      bookValuePerShare: number;
+    };
+    segmentMetrics: {
+      latest10kSegmentRevenueMentions: number;
+      latest10kSegmentOperatingIncomeMentions: number;
+      latest10qSegmentRevenueMentions: number;
+      latest10qSegmentOperatingIncomeMentions: number;
+    };
     filingSections: {
       latest10kMdna?: string | null;
       latest10kRiskFactors?: string | null;
@@ -111,6 +127,7 @@ export type ValuationReport = {
       forwardEpsGrowthPct?: number;
     };
     governanceSignals: string[];
+    deterministicMissingData: string[];
   };
   dataQuality: {
     historyYears: number;

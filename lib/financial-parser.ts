@@ -31,11 +31,16 @@ export function normalizeFinancials(facts: FactsPayload): FinancialYear[] {
   const interestExpense = extractYearlySeries(facts, SEC_FIELDS.interestExpense);
   const rAndD = extractYearlySeries(facts, SEC_FIELDS.rAndD);
   const stockBasedComp = extractYearlySeries(facts, SEC_FIELDS.stockBasedComp);
+  const shortTermDebt = extractYearlySeries(facts, SEC_FIELDS.shortTermDebt);
+  const currentLongTermDebt = extractYearlySeries(facts, SEC_FIELDS.currentLongTermDebt);
+  const shareholderEquity = extractYearlySeries(facts, SEC_FIELDS.shareholderEquity);
 
   const years = [...revenue.keys()].sort((a, b) => a - b).slice(-5);
   return years.map((year) => {
     const operatingCashFlow = safeValue(cfo.get(year));
     const capexValue = Math.abs(safeValue(capex.get(year)));
+    const sharesOutstanding = Math.max(1, safeValue(shares.get(year)));
+    const equityValue = safeValue(shareholderEquity.get(year));
 
     return {
       year,
@@ -45,7 +50,7 @@ export function normalizeFinancials(facts: FactsPayload): FinancialYear[] {
       fcf: operatingCashFlow - capexValue,
       totalDebt: safeValue(debt.get(year)),
       cash: safeValue(cash.get(year)),
-      sharesOutstanding: Math.max(1, safeValue(shares.get(year))),
+      sharesOutstanding,
       currentAssets: safeValue(currentAssets.get(year)),
       currentLiabilities: safeValue(currentLiabilities.get(year)),
       inventory: safeValue(inventory.get(year)),
@@ -53,6 +58,10 @@ export function normalizeFinancials(facts: FactsPayload): FinancialYear[] {
       capex: capexValue,
       rAndD: Math.abs(safeValue(rAndD.get(year))),
       stockBasedComp: Math.abs(safeValue(stockBasedComp.get(year))),
+      shortTermDebt: Math.abs(safeValue(shortTermDebt.get(year))),
+      currentLongTermDebt: Math.abs(safeValue(currentLongTermDebt.get(year))),
+      shareholderEquity: equityValue,
+      bookValuePerShare: sharesOutstanding > 0 ? equityValue / sharesOutstanding : 0,
     };
   });
 }

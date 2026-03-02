@@ -15,6 +15,18 @@ export function EnrichmentPanel({
       sbcToRevenue?: number;
       fcfMargin?: number;
     };
+    leverage?: {
+      debtToEquity?: number | null;
+      shortDebtPct?: number | null;
+      currentMaturityDebtPct?: number | null;
+      bookValuePerShare?: number;
+    };
+    segmentMetrics?: {
+      latest10kSegmentRevenueMentions?: number;
+      latest10kSegmentOperatingIncomeMentions?: number;
+      latest10qSegmentRevenueMentions?: number;
+      latest10qSegmentOperatingIncomeMentions?: number;
+    };
     filingSections?: {
       latest10kMdna?: string | null;
       latest10kRiskFactors?: string | null;
@@ -32,6 +44,7 @@ export function EnrichmentPanel({
       forwardEpsGrowthPct?: number;
     };
     governanceSignals?: string[];
+    deterministicMissingData?: string[];
   };
 }) {
   if (!enrichment) {
@@ -40,9 +53,12 @@ export function EnrichmentPanel({
 
   const liquidity = enrichment.liquidity ?? {};
   const intensity = enrichment.intensity ?? {};
+  const leverage = enrichment.leverage ?? {};
+  const segmentMetrics = enrichment.segmentMetrics ?? {};
   const sections = enrichment.filingSections ?? {};
   const consensus = enrichment.consensus;
   const governanceSignals = enrichment.governanceSignals ?? [];
+  const deterministicMissingData = enrichment.deterministicMissingData ?? [];
 
   const snippets = [
     { label: "10-K MD&A", value: sections.latest10kMdna },
@@ -68,9 +84,23 @@ export function EnrichmentPanel({
         <Metric label="Interest Coverage" value={liquidity.interestCoverage} />
         <Metric label="Cash / Debt" value={liquidity.cashToDebt} />
         <Metric label="Debt / FCF" value={liquidity.debtToFcf ?? undefined} />
+        <Metric label="Debt / Equity" value={leverage.debtToEquity ?? undefined} />
+        <Metric label="Book Value / Share" value={leverage.bookValuePerShare} />
         <Metric label="Capex / Revenue" value={intensity.capexToRevenue} pct />
         <Metric label="R&D / Revenue" value={intensity.rAndDToRevenue} pct />
         <Metric label="SBC / Revenue" value={intensity.sbcToRevenue} pct />
+        <Metric label="Short Debt %" value={leverage.shortDebtPct ?? undefined} pct />
+        <Metric label="Current LT Debt %" value={leverage.currentMaturityDebtPct ?? undefined} pct />
+      </div>
+
+      <div className="rounded-lg border border-slate-200 p-3">
+        <p className="text-sm font-semibold text-slate-800">Segment Extraction Counters</p>
+        <div className="mt-1 grid gap-1 text-sm text-slate-700 sm:grid-cols-2">
+          <p>10-K revenue mentions: {segmentMetrics.latest10kSegmentRevenueMentions ?? 0}</p>
+          <p>10-K operating income mentions: {segmentMetrics.latest10kSegmentOperatingIncomeMentions ?? 0}</p>
+          <p>10-Q revenue mentions: {segmentMetrics.latest10qSegmentRevenueMentions ?? 0}</p>
+          <p>10-Q operating income mentions: {segmentMetrics.latest10qSegmentOperatingIncomeMentions ?? 0}</p>
+        </div>
       </div>
 
       <div className="rounded-lg border border-slate-200 p-3">
@@ -103,6 +133,19 @@ export function EnrichmentPanel({
           <ul className="mt-1 list-disc pl-5 text-sm text-slate-700">
             {governanceSignals.map((signal) => (
               <li key={signal}>{signal}</li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      <div className="rounded-lg border border-slate-200 p-3">
+        <p className="text-sm font-semibold text-slate-800">Deterministic Missing Data</p>
+        {!deterministicMissingData.length ? (
+          <p className="mt-1 text-sm text-slate-500">No deterministic extraction gaps detected.</p>
+        ) : (
+          <ul className="mt-1 list-disc pl-5 text-sm text-slate-700">
+            {deterministicMissingData.map((item) => (
+              <li key={item}>{item}</li>
             ))}
           </ul>
         )}

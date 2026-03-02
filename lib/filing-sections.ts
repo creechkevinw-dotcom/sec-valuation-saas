@@ -37,6 +37,11 @@ async function fetchFilingText(url?: string | null): Promise<string | null> {
   return stripHtml(raw);
 }
 
+function countPattern(text: string | null, pattern: RegExp): number {
+  if (!text) return 0;
+  return (text.match(pattern) ?? []).length;
+}
+
 export async function extractFilingSections(input: {
   latest10K: FilingDocument | null;
   latest10Q: FilingDocument | null;
@@ -60,12 +65,24 @@ export async function extractFilingSections(input: {
     /reportable\s+segments/i,
   ];
 
-  return {
+  const result = {
     latest10kMdna: kText ? extractAroundHeading(kText, mdnaPatterns) : null,
     latest10kRiskFactors: kText ? extractAroundHeading(kText, riskPatterns) : null,
     latest10kSegmentNotes: kText ? extractAroundHeading(kText, segmentPatterns) : null,
     latest10qMdna: qText ? extractAroundHeading(qText, mdnaPatterns) : null,
     latest10qRiskFactors: qText ? extractAroundHeading(qText, riskPatterns) : null,
     latest10qSegmentNotes: qText ? extractAroundHeading(qText, segmentPatterns) : null,
+    segmentMetrics: {
+      latest10kSegmentRevenueMentions:
+        countPattern(kText, /\bsegment\b/gi) + countPattern(kText, /\brevenue\b/gi),
+      latest10kSegmentOperatingIncomeMentions:
+        countPattern(kText, /\bsegment\b/gi) + countPattern(kText, /\boperating\s+income\b/gi),
+      latest10qSegmentRevenueMentions:
+        countPattern(qText, /\bsegment\b/gi) + countPattern(qText, /\brevenue\b/gi),
+      latest10qSegmentOperatingIncomeMentions:
+        countPattern(qText, /\bsegment\b/gi) + countPattern(qText, /\boperating\s+income\b/gi),
+    },
   };
+
+  return result;
 }

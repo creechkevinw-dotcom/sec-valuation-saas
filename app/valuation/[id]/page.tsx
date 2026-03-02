@@ -86,6 +86,18 @@ export default async function ValuationDetailPage({
         sbcToRevenue?: number;
         fcfMargin?: number;
       };
+      leverage?: {
+        debtToEquity?: number | null;
+        shortDebtPct?: number | null;
+        currentMaturityDebtPct?: number | null;
+        bookValuePerShare?: number;
+      };
+      segmentMetrics?: {
+        latest10kSegmentRevenueMentions?: number;
+        latest10kSegmentOperatingIncomeMentions?: number;
+        latest10qSegmentRevenueMentions?: number;
+        latest10qSegmentOperatingIncomeMentions?: number;
+      };
       filingSections?: {
         latest10kMdna?: string | null;
         latest10kRiskFactors?: string | null;
@@ -103,6 +115,7 @@ export default async function ValuationDetailPage({
         forwardEpsGrowthPct?: number;
       };
       governanceSignals?: string[];
+      deterministicMissingData?: string[];
     };
   };
 
