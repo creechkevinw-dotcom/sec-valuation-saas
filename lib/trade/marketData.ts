@@ -43,6 +43,7 @@ function getSessionStatus(now = new Date()): SessionStatus {
 
 type QuoteResponse = {
   c: number;
+  pc?: number;
   t: number;
   v: number;
 };
@@ -89,7 +90,9 @@ export async function getMarketSnapshot(ticker: string): Promise<MarketSnapshot>
     bidAsk = null;
   }
 
-  const price = Number(quote.c);
+  const rawPrice = Number(quote.c);
+  const previousClose = Number(quote.pc ?? 0);
+  const price = rawPrice > 0 ? rawPrice : previousClose;
   const bid = bidAsk?.b && Number(bidAsk.b) > 0 ? Number(bidAsk.b) : price;
   const ask = bidAsk?.a && Number(bidAsk.a) > 0 ? Number(bidAsk.a) : price;
   const midpoint = bid > 0 && ask > 0 ? (bid + ask) / 2 : price;
@@ -117,7 +120,7 @@ export async function getMarketSnapshot(ticker: string): Promise<MarketSnapshot>
   if (spreadPct > 2) {
     throw new Error("Bid/ask spread too wide");
   }
-  if (stale) {
+  if (stale && sessionStatus === "OPEN") {
     throw new Error("Market data stale");
   }
 
@@ -134,7 +137,7 @@ export async function getMarketSnapshot(ticker: string): Promise<MarketSnapshot>
     sessionStatus,
     halted: false,
     active: true,
-    stale: false,
+    stale,
     source: SOURCE,
   };
 
