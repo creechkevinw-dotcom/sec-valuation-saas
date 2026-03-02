@@ -94,13 +94,16 @@ export async function getMarketSnapshot(ticker: string): Promise<MarketSnapshot>
   const ask = bidAsk?.a && Number(bidAsk.a) > 0 ? Number(bidAsk.a) : price;
   const midpoint = bid > 0 && ask > 0 ? (bid + ask) / 2 : price;
   const spreadPct = midpoint > 0 && ask >= bid ? ((ask - bid) / midpoint) * 100 : 100;
-  const tradeTimestampMs = Number(quote.t) * 1000;
+  const rawTimestampMs = Number(quote.t) * 1000;
+  const tradeTimestampMs =
+    Number.isFinite(rawTimestampMs) && rawTimestampMs > 0 ? rawTimestampMs : Date.now();
   const lastTradeTimestamp = new Date(tradeTimestampMs).toISOString();
   const sessionStatus = getSessionStatus();
-  const stale =
+  const staleThresholdMs =
     sessionStatus === "OPEN"
-      ? Date.now() - tradeTimestampMs > 60_000
-      : Date.now() - tradeTimestampMs > 15 * 60_000;
+      ? 20 * 60_000
+      : 24 * 60 * 60_000;
+  const stale = Date.now() - tradeTimestampMs > staleThresholdMs;
 
   const halted = price <= 0;
   const active = Boolean(profile?.ticker);
