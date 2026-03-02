@@ -75,15 +75,23 @@ export async function getMarketSnapshot(ticker: string): Promise<MarketSnapshot>
 
   const key = requireMarketApiKey();
 
-  const [quote, bidAsk, profile] = await Promise.all([
+  const [quote, profile] = await Promise.all([
     fetchJson<QuoteResponse>(`https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${key}`),
-    fetchJson<BidAskResponse>(`https://finnhub.io/api/v1/stock/bidask?symbol=${symbol}&token=${key}`),
     fetchJson<ProfileResponse>(`https://finnhub.io/api/v1/stock/profile2?symbol=${symbol}&token=${key}`),
   ]);
 
+  let bidAsk: BidAskResponse | null = null;
+  try {
+    bidAsk = await fetchJson<BidAskResponse>(
+      `https://finnhub.io/api/v1/stock/bidask?symbol=${symbol}&token=${key}`,
+    );
+  } catch {
+    bidAsk = null;
+  }
+
   const price = Number(quote.c);
-  const bid = Number(bidAsk.b);
-  const ask = Number(bidAsk.a);
+  const bid = bidAsk?.b && Number(bidAsk.b) > 0 ? Number(bidAsk.b) : price;
+  const ask = bidAsk?.a && Number(bidAsk.a) > 0 ? Number(bidAsk.a) : price;
   const midpoint = bid > 0 && ask > 0 ? (bid + ask) / 2 : price;
   const spreadPct = midpoint > 0 && ask >= bid ? ((ask - bid) / midpoint) * 100 : 100;
   const tradeTimestampMs = Number(quote.t) * 1000;
@@ -94,7 +102,7 @@ export async function getMarketSnapshot(ticker: string): Promise<MarketSnapshot>
       ? Date.now() - tradeTimestampMs > 60_000
       : Date.now() - tradeTimestampMs > 15 * 60_000;
 
-  const halted = price <= 0 || Number(quote.v) <= 0;
+  const halted = price <= 0;
   const active = Boolean(profile?.ticker);
 
   if (!active) {

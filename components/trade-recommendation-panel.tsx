@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 type MarketSnapshot = {
   ticker: string;
@@ -124,6 +124,7 @@ export function TradeRecommendationPanel({ ticker }: { ticker: string }) {
   const [result, setResult] = useState<TradeSuccessPayload | null>(null);
   const [refusal, setRefusal] = useState<TradeRefusalPayload | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const autoRequestedRef = useRef(false);
 
   async function loadConsent() {
     try {
@@ -174,7 +175,7 @@ export function TradeRecommendationPanel({ ticker }: { ticker: string }) {
     }
   }, [ticker]);
 
-  async function generateRecommendation() {
+  const generateRecommendation = useCallback(async () => {
     setBusy(true);
     setError(null);
     setRefusal(null);
@@ -199,11 +200,18 @@ export function TradeRecommendationPanel({ ticker }: { ticker: string }) {
     } finally {
       setBusy(false);
     }
-  }
+  }, [ticker]);
 
   useEffect(() => {
     void loadConsent();
   }, []);
+
+  useEffect(() => {
+    autoRequestedRef.current = false;
+    setResult(null);
+    setRefusal(null);
+    setError(null);
+  }, [ticker]);
 
   useEffect(() => {
     void loadLiveSnapshot();
@@ -212,6 +220,16 @@ export function TradeRecommendationPanel({ ticker }: { ticker: string }) {
     }, 30_000);
     return () => clearInterval(timer);
   }, [loadLiveSnapshot]);
+
+  useEffect(() => {
+    if (consentAccepted !== true) return;
+    if (busy) return;
+    if (autoRequestedRef.current) return;
+    if (result || refusal) return;
+
+    autoRequestedRef.current = true;
+    void generateRecommendation();
+  }, [busy, consentAccepted, generateRecommendation, refusal, result]);
 
   const combinedRisks = useMemo(() => {
     if (!result) return [];
