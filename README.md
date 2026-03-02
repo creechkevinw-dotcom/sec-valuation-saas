@@ -18,12 +18,13 @@ To keep your work in VS Code minimal, provide these once and I can do the rest o
    - `sec-valuation-saas/1.0 your-email@domain.com`
 5. `OPENAI_API_KEY` (required for AI analysis)
 6. `FINNHUB_API_KEY` (required for live market, technicals, options, and trade recommendation engine)
-7. `CONSENSUS_ENABLED` (optional, default `false`; enables consensus provider hook when configured)
-8. Stripe (optional for MVP hook now, required before paid launch):
+7. `FMP_API_KEY` (optional; used to populate analyst low/mid/high targets if Finnhub target endpoint is restricted)
+8. `CONSENSUS_ENABLED` (optional, default `false`; enables consensus provider hook when configured)
+9. Stripe (optional for MVP hook now, required before paid launch):
    - `STRIPE_SECRET_KEY`
    - `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`
    - `STRIPE_WEBHOOK_SECRET`
-9. Deployment targets:
+10. Deployment targets:
    - Supabase project ref + org
    - Vercel team/project (or permission to create)
    - GitHub repo URL to push this code
@@ -45,7 +46,10 @@ To keep your work in VS Code minimal, provide these once and I can do the rest o
 5. Finnhub API
    - Add `FINNHUB_API_KEY`
    - Used by: live market snapshots, technical indicators, options chain, earnings, trade recommendations
-6. Stripe (optional in this MVP phase)
+6. FMP API (optional consensus target fallback)
+   - Add `FMP_API_KEY`
+   - Used by: analyst target low/mid/high fallback when Finnhub `stock/price-target` access is limited
+7. Stripe (optional in this MVP phase)
    - Create products/prices for `pro`
    - Configure webhook endpoint
 
@@ -92,6 +96,7 @@ npm run build
    - `SEC_USER_AGENT`
    - `OPENAI_API_KEY`
    - `FINNHUB_API_KEY`
+   - `FMP_API_KEY` (optional)
    - Stripe vars (if enabled)
 4. Deploy.
 5. Smoke test:
@@ -114,6 +119,7 @@ SUPABASE_SERVICE_ROLE_KEY=
 SEC_USER_AGENT=
 OPENAI_API_KEY=
 FINNHUB_API_KEY=
+FMP_API_KEY=
 VERCEL_PROJECT_NAME=
 VERCEL_TEAM=
 GITHUB_REPO_URL=

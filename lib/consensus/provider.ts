@@ -54,6 +54,8 @@ type YahooQuoteSummary = {
   };
 };
 
+type FmpTargetPoint = Record<string, unknown>;
+
 type EpsEstimatePoint = {
   period?: string;
   epsAvg?: number;
@@ -164,6 +166,121 @@ async function fetchYahooTargets(symbol: string): Promise<{
   };
 }
 
+function pickFirstNumber(record: Record<string, unknown>, keys: string[]) {
+  for (const key of keys) {
+    const val = safeNumber(record[key]);
+    if (val != null) return val;
+  }
+  return undefined;
+}
+
+function pickFirstString(record: Record<string, unknown>, keys: string[]) {
+  for (const key of keys) {
+    const raw = record[key];
+    if (typeof raw === "string" && raw.trim().length > 0) return raw;
+  }
+  return undefined;
+}
+
+function parseFmpTargets(payload: unknown): {
+  targetLow?: number;
+  targetMean?: number;
+  targetHigh?: number;
+  updatedAt?: string;
+} {
+  const rows = Array.isArray(payload) ? (payload as FmpTargetPoint[]) : [];
+  const first = rows[0];
+  if (first && typeof first === "object") {
+    const directLow = pickFirstNumber(first, [
+      "targetLow",
+      "target_low",
+      "priceTargetLow",
+      "priceTargetLowEstimate",
+      "low",
+    ]);
+    const directMean = pickFirstNumber(first, [
+      "targetConsensus",
+      "targetMean",
+      "targetAverage",
+      "targetMedian",
+      "priceTargetAverage",
+      "mean",
+    ]);
+    const directHigh = pickFirstNumber(first, [
+      "targetHigh",
+      "target_high",
+      "priceTargetHigh",
+      "priceTargetHighEstimate",
+      "high",
+    ]);
+    const directUpdated = pickFirstString(first, [
+      "lastUpdated",
+      "updatedDate",
+      "publishedDate",
+      "date",
+    ]);
+
+    if (directLow != null || directMean != null || directHigh != null) {
+      return {
+        targetLow: directLow,
+        targetMean: directMean,
+        targetHigh: directHigh,
+        updatedAt: directUpdated,
+      };
+    }
+  }
+
+  const perAnalystTargets = rows
+    .map((row) =>
+      pickFirstNumber(row, ["target", "targetPrice", "priceTarget", "priceTargetValue", "priceTargetAvg"]),
+    )
+    .filter((value): value is number => value != null && Number.isFinite(value) && value > 0);
+
+  if (perAnalystTargets.length > 0) {
+    const low = Math.min(...perAnalystTargets);
+    const high = Math.max(...perAnalystTargets);
+    const mean = perAnalystTargets.reduce((sum, value) => sum + value, 0) / perAnalystTargets.length;
+    return {
+      targetLow: low,
+      targetMean: mean,
+      targetHigh: high,
+    };
+  }
+
+  return {};
+}
+
+async function fetchFmpTargets(symbol: string): Promise<{
+  targetLow?: number;
+  targetMean?: number;
+  targetHigh?: number;
+  updatedAt?: string;
+}> {
+  const key = process.env.FMP_API_KEY ?? process.env.FINANCIAL_MODELING_PREP_API_KEY;
+  if (!key) return {};
+
+  const candidateUrls = [
+    `https://financialmodelingprep.com/api/v4/price-target-consensus?symbol=${symbol}&apikey=${key}`,
+    `https://financialmodelingprep.com/api/v3/price-target-consensus?symbol=${symbol}&apikey=${key}`,
+    `https://financialmodelingprep.com/api/v4/price-target?symbol=${symbol}&apikey=${key}`,
+    `https://financialmodelingprep.com/api/v3/price-target?symbol=${symbol}&apikey=${key}`,
+  ];
+
+  for (const url of candidateUrls) {
+    const res = await fetch(url, { cache: "no-store" });
+    if (!res.ok) {
+      continue;
+    }
+
+    const parsed = parseFmpTargets(await res.json());
+    if (parsed.targetLow != null || parsed.targetMean != null || parsed.targetHigh != null) {
+      return parsed;
+    }
+  }
+
+  return {};
+}
+
 class FinnhubConsensusProvider implements ConsensusProvider {
   async getConsensus(ticker: string): Promise<ConsensusSnapshot> {
     const symbol = ticker.trim().toUpperCase();
@@ -218,12 +335,25 @@ class FinnhubConsensusProvider implements ConsensusProvider {
     let targetSource = "finnhub";
 
     if (targetLow == null || targetMean == null || targetHigh == null) {
+      const fmpTargets = await fetchFmpTargets(symbol);
+      targetLow = targetLow ?? fmpTargets.targetLow;
+      targetMean = targetMean ?? fmpTargets.targetMean;
+      targetHigh = targetHigh ?? fmpTargets.targetHigh;
+      if (fmpTargets.updatedAt && !priceTarget.lastUpdated) {
+        priceTarget.lastUpdated = fmpTargets.updatedAt;
+      }
+      if (fmpTargets.targetLow != null || fmpTargets.targetMean != null || fmpTargets.targetHigh != null) {
+        targetSource = "finnhub+fmp";
+      }
+    }
+
+    if (targetLow == null || targetMean == null || targetHigh == null) {
       const yahooTargets = await fetchYahooTargets(symbol);
       targetLow = targetLow ?? yahooTargets.targetLow;
       targetMean = targetMean ?? yahooTargets.targetMean;
       targetHigh = targetHigh ?? yahooTargets.targetHigh;
       if (yahooTargets.targetLow != null || yahooTargets.targetMean != null || yahooTargets.targetHigh != null) {
-        targetSource = "finnhub+yahoo";
+        targetSource = targetSource === "finnhub+fmp" ? "finnhub+fmp+yahoo" : "finnhub+yahoo";
       }
     }
 
@@ -259,7 +389,7 @@ class FinnhubConsensusProvider implements ConsensusProvider {
     if (!anyData) {
       notes = "No consensus payload returned from configured provider endpoints";
     } else if (!hasTargets && targetFetchError?.includes("CONSENSUS_HTTP_403")) {
-      notes = "Analyst rating is available, but price target endpoint is restricted on current provider plan.";
+      notes = "Analyst rating is available, but Finnhub price-target endpoint is restricted. Add FMP_API_KEY to enable target fallback.";
     } else if (!hasTargets) {
       notes = "Analyst rating is available, but provider did not return low/mean/high price targets.";
     }

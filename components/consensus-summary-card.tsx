@@ -12,6 +12,7 @@ export function ConsensusSummaryCard({
     ratingScore?: number;
     revisionTrend?: "up" | "down" | "flat";
     updatedAt?: string;
+    source?: string;
     notes?: string;
   };
 }) {
@@ -55,6 +56,7 @@ export function ConsensusSummaryCard({
               <p className="mt-1 text-xs text-slate-500">
                 Updated: {consensus.updatedAt ? new Date(consensus.updatedAt).toLocaleDateString() : "-"}
               </p>
+              <p className="mt-1 text-xs text-slate-500">Source: {consensus.source ?? "-"}</p>
             </div>
           </div>
           {consensus.notes ? <p className="text-xs text-slate-500">{consensus.notes}</p> : null}
