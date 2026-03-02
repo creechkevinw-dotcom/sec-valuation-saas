@@ -90,8 +90,8 @@ export function validateRiskReward(rec: DeterministicRecommendation) {
     const stopDistance = Math.abs(leg.entry - leg.stop);
     const rewardDistance = Math.abs(leg.target - leg.entry);
     const rr = rewardDistance / Math.max(stopDistance, 1e-9);
-    if (rr < 2) {
-      return { ok: false, reason: "Reward/risk below 2:1" };
+    if (!Number.isFinite(rr) || rr <= 0) {
+      return { ok: false, reason: "Invalid reward/risk value" };
     }
     if (leg.direction === "long" && !(leg.target > leg.entry && leg.stop < leg.entry)) {
       return { ok: false, reason: "Invalid long trade geometry" };
