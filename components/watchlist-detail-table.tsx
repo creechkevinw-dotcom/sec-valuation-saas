@@ -44,7 +44,7 @@ export function WatchlistDetailTable({
             <th className="pb-2">Ticker</th>
             <th className="pb-2">Added</th>
             <th className="pb-2">Latest Health</th>
-            <th className="pb-2">Latest Base Fair Value</th>
+            <th className="pb-2">Latest Mid Fair Value</th>
             <th className="pb-2">Latest Valuation</th>
           </tr>
         </thead>

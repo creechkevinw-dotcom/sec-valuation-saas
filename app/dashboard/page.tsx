@@ -84,7 +84,7 @@ export default async function DashboardPage() {
                   <tr className="text-slate-500">
                     <th className="pb-2">Ticker</th>
                     <th className="pb-2">Health</th>
-                    <th className="pb-2">Base Fair Value</th>
+                    <th className="pb-2">Mid Fair Value</th>
                     <th className="pb-2">Created</th>
                   </tr>
                 </thead>

@@ -22,9 +22,9 @@ export async function generateReportPdf(report: ValuationReport): Promise<Uint8A
   draw(`Financial Health Score: ${report.healthScore}/100`, 50, 694, 13, true);
 
   draw("DCF Summary", 50, 664, 14, true);
-  draw(`Base Fair Value/Share: $${report.dcf.base.fairValuePerShare.toFixed(2)}`, 50, 642);
-  draw(`Bull Fair Value/Share: $${report.dcf.bull.fairValuePerShare.toFixed(2)}`, 50, 626);
-  draw(`Bear Fair Value/Share: $${report.dcf.bear.fairValuePerShare.toFixed(2)}`, 50, 610);
+  draw(`Mid Fair Value/Share: $${report.dcf.base.fairValuePerShare.toFixed(2)}`, 50, 642);
+  draw(`High Fair Value/Share: $${report.dcf.bull.fairValuePerShare.toFixed(2)}`, 50, 626);
+  draw(`Low Fair Value/Share: $${report.dcf.bear.fairValuePerShare.toFixed(2)}`, 50, 610);
 
   draw("5Y Financial History", 50, 578, 14, true);
   let cursor = 558;
