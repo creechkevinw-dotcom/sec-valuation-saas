@@ -4,17 +4,21 @@ export function liquidityGate(args: {
   avgDailyDollarVolume: number;
   marketCap: number | null;
   options: OptionsSnapshot;
+  optionsAvailable?: boolean;
   technical: TechnicalSnapshot;
   market: MarketSnapshot;
 }) {
-  const { avgDailyDollarVolume, marketCap, options, technical, market } = args;
+  const { avgDailyDollarVolume, marketCap, options, optionsAvailable = true, technical, market } = args;
   if (avgDailyDollarVolume < 10_000_000) {
     return { ok: false, reason: "Avg daily dollar volume below threshold" };
   }
   if (marketCap != null && marketCap < 1_000_000_000) {
     return { ok: false, reason: "Market cap below threshold" };
   }
-  if (!options.liquid || options.totalOi < 1000 || (options.avgSpreadPct ?? 999) > 5) {
+  if (
+    optionsAvailable &&
+    (!options.liquid || options.totalOi < 1000 || (options.avgSpreadPct ?? 999) > 5)
+  ) {
     return { ok: false, reason: "Options liquidity below threshold" };
   }
   if (technical.atr14 / Math.max(market.price, 1) > 0.25) {
@@ -40,8 +44,9 @@ export function buildDeterministicRecommendation(args: {
   market: MarketSnapshot;
   technical: TechnicalSnapshot;
   earnings: EarningsSnapshot;
+  optionsAvailable?: boolean;
 }): DeterministicRecommendation {
-  const { signal, market, technical, earnings } = args;
+  const { signal, market, technical, earnings, optionsAvailable = true } = args;
   const shortDirection = signal.bias === "mixed" ? null : signal.bias;
 
   let shortTermTrade: TradeLeg | null = null;
@@ -57,7 +62,9 @@ export function buildDeterministicRecommendation(args: {
   }
 
   let optionsStrategy: string | null = null;
-  if (signal.bias === "long") {
+  if (!optionsAvailable) {
+    optionsStrategy = null;
+  } else if (signal.bias === "long") {
     optionsStrategy = earnings.sameWeek
       ? "If trading earnings week, prefer defined-risk volatility structures only."
       : "Bull call spread with liquid strikes and tight spread.";

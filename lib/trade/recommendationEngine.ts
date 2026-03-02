@@ -5,7 +5,7 @@ import { getOptionsSnapshot } from "@/lib/trade/optionsEngine";
 import { buildDeterministicRecommendation, liquidityGate, validateRiskReward } from "@/lib/trade/riskValidator";
 import { composeConfidence, computeSignal } from "@/lib/trade/signalEngine";
 import { getTechnicalSnapshot } from "@/lib/trade/technicalEngine";
-import type { FundamentalSnapshot, TradeRecommendationResult, TradeRefusal } from "@/lib/trade/types";
+import type { FundamentalSnapshot, OptionsSnapshot, TradeRecommendationResult, TradeRefusal } from "@/lib/trade/types";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 type AnyDb = SupabaseClient;
@@ -129,11 +129,25 @@ export async function generateTradeRecommendation(params: {
     return refusal("PROVIDER_ERROR", "Earnings data unavailable", { message: String(error) });
   }
 
-  let options;
+  let optionsAvailable = true;
+  let options: OptionsSnapshot;
   try {
     options = await getOptionsSnapshot(ticker);
   } catch (error) {
-    return refusal("PROVIDER_ERROR", "Options chain unavailable", { message: String(error) });
+    optionsAvailable = false;
+    options = {
+      contracts: [],
+      putCallRatio: null,
+      ivRank: null,
+      avgSpreadPct: null,
+      totalOi: 0,
+      liquid: false,
+      source: "unavailable",
+    };
+    console.warn("Options data unavailable, switching to equity-only mode", {
+      ticker,
+      message: error instanceof Error ? error.message : String(error),
+    });
   }
 
   let fundamentals;
@@ -147,6 +161,7 @@ export async function generateTradeRecommendation(params: {
     avgDailyDollarVolume: fundamentals.avgDailyDollarVolume,
     marketCap: fundamentals.marketCap,
     options,
+    optionsAvailable,
     technical,
     market,
   });
@@ -160,6 +175,7 @@ export async function generateTradeRecommendation(params: {
     market,
     technical,
     earnings,
+    optionsAvailable,
   });
 
   if (earnings.sameWeek && recommendation.optionsStrategy && !recommendation.optionsStrategy.toLowerCase().includes("volatility")) {
@@ -197,6 +213,7 @@ export async function generateTradeRecommendation(params: {
       "Volatility risk",
       "Liquidity risk",
       earnings.earningsRisk ? "Earnings event risk (<7 days)" : "No immediate earnings event",
+      ...(optionsAvailable ? [] : ["Options chain unavailable: recommendation generated in equity-only mode"]),
     ],
   };
 
